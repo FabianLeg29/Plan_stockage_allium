@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Plan de stockage — Échalotes &amp; Oignons</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #E3DECF;
+    --panel: #FBF9F3;
+    --panel-2: #F1ECDE;
+    --ink: #2B2620;
+    --ink-soft: #6B6355;
+    --line: #D2C9B4;
+    --copper: #A85C2E;
+    --copper-soft: #E6C9AE;
+    --green: #4E6647;
+    --green-soft: #DCE4D2;
+    --warn: #A13B2F;
+    --warn-soft: #F1D6CC;
+    --blue: #3E5C76;
+    --blue-soft: #D9E2EA;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(43,38,32,0.06), 0 4px 14px rgba(43,38,32,0.06);
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ margin:0; padding:0; }
+  body{ background: var(--bg); color: var(--ink); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; }
+  .wrap{ max-width: 1320px; margin: 0 auto; padding: 18px 14px 60px; }
+
+  header.app-header{ display:flex; align-items:center; justify-content:space-between; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand svg{ width:36px; height:36px; flex-shrink:0; }
+  .brand h1{ font-family:'Fraunces', serif; font-weight:600; font-size: 20px; margin:0; letter-spacing:-0.01em; }
+  .brand p{ margin:2px 0 0; color: var(--ink-soft); font-size: 12px; }
+  .header-stats{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .stat-pill{ background: var(--panel); border:1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--ink-soft); display:flex; align-items:center; gap:6px; white-space:nowrap; }
+  .stat-pill b{ font-family:'IBM Plex Mono', monospace; color: var(--ink); font-size: 12.5px; font-weight:600; }
+  .dot{ width:7px; height:7px; border-radius:50%; background: var(--copper); }
+  .dot.green{ background: var(--green); }
+  .refresh-btn{ background: var(--panel); border:1px solid var(--line); border-radius: 999px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; color:var(--ink-soft); }
+  .refresh-btn.spin svg{ animation: spin .6s linear; }
+  @keyframes spin{ from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+  nav.tabs{ display:flex; gap:4px; margin-bottom: 16px; background: var(--panel-2); padding: 5px; border-radius: 12px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  nav.tabs button{ font-family:'Inter', sans-serif; font-weight: 600; font-size: 13px; padding: 9px 14px; border:none; background: transparent; color: var(--ink-soft); border-radius: 8px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+  nav.tabs button:hover{ color: var(--ink); }
+  nav.tabs button.active{ background: var(--panel); color: var(--copper); box-shadow: var(--shadow); }
+
+  .card{ background: var(--panel); border:1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .card h2{ font-family:'Fraunces', serif; font-weight: 600; font-size: 17px; margin: 0 0 4px; }
+  .card .sub{ color: var(--ink-soft); font-size: 12.5px; margin: 0 0 14px; }
+
+  .cellule-tabs, .ligne-tabs{ display:flex; gap:6px; margin-bottom:12px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:2px; }
+  .cellule-tabs button{ font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:600; padding:8px 12px; border-radius:7px; border:1.5px solid var(--line); background:#fff; color:var(--ink-soft); cursor:pointer; white-space:nowrap; flex-shrink:0; }
+  .cellule-tabs button.active{ background: var(--copper); border-color: var(--copper); color:#fff; }
+  .cellule-tabs button .n{ opacity:.75; font-weight:500; }
+  .ligne-tabs button{ font-family:'Inter', sans-serif; font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:6px; border:1.5px solid var(--line); background:#fff; color:var(--ink-soft); cursor:pointer; white-space:nowrap; flex-shrink:0; }
+  .ligne-tabs button.active{ background: var(--blue); border-color: var(--blue); color:#fff; }
+
+  .coupe-grid-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin: 0 -16px; padding: 0 16px; }
+  table.coupe{ border-collapse: separate; border-spacing: 4px; }
+  table.coupe th{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft); font-weight:600; text-align:center; padding-bottom:2px; }
+  table.coupe td.niveaulabel{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft); text-align:right; padding-right:6px; vertical-align:middle; white-space:nowrap; }
+  .coupe-cell{ width:64px; height:38px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:9.5px; font-weight:700; color:#fff; text-align:center; padding:2px 3px; line-height:1.15; position:relative; }
+  .coupe-cell.empty{ background:#EDE8DA; border:1.5px dashed var(--line); cursor:pointer; }
+  .coupe-cell.disabled{ background: repeating-linear-gradient(45deg, #E3DECF, #E3DECF 5px, #D8D2C0 5px, #D8D2C0 10px); cursor:default; opacity:.5; }
+  .coupe-cell:active{ outline: 2px solid var(--ink); outline-offset:1px; }
+  .coupe-legend{ display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; font-size:11.5px; color:var(--ink-soft); }
+  .coupe-legend .lg-swatch{ display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+
+  .grid-form{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .grid-form.wide-3{ grid-template-columns: repeat(3,1fr); }
+  .grid-form.two{ grid-template-columns: repeat(2,1fr); }
+  @media (max-width: 760px){ .grid-form, .grid-form.wide-3, .grid-form.two{ grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px){ .grid-form, .grid-form.wide-3, .grid-form.two{ grid-template-columns: 1fr; } }
+  label.field{ display:flex; flex-direction:column; gap:5px; font-size: 11.5px; font-weight:600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; }
+  label.field input, label.field select{ font-family:'Inter', sans-serif; font-size: 16px; font-weight: 500; color: var(--ink); background: #fff; border: 1.5px solid var(--line); border-radius: 8px; padding: 10px 10px; text-transform: none; letter-spacing: normal; }
+  label.field input:focus, label.field select:focus{ outline:none; border-color: var(--copper); }
+  label.field.span-2{ grid-column: span 2; }
+  label.field.span-full{ grid-column: 1/-1; }
+  @media (max-width:480px){ label.field.span-2{ grid-column: span 1; } }
+  label.field .hint{ font-size:11px; text-transform:none; letter-spacing:normal; font-weight:500; color:var(--ink-soft); margin-top:2px; }
+
+  .btn{ font-family:'Inter', sans-serif; font-weight: 700; font-size: 13.5px; cursor:pointer; border:none; border-radius: 8px; padding: 11px 18px; }
+  .btn:active{ transform: scale(0.98); }
+  .btn-copper{ background: var(--copper); color: #fff; }
+  .btn-green{ background: var(--green); color: #fff; }
+  .btn-warn{ background: var(--warn); color: #fff; }
+  .btn-blue{ background: var(--blue); color: #fff; }
+  .btn-ghost{ background: transparent; color: var(--ink-soft); border: 1.5px solid var(--line); }
+  .btn-sm{ padding:8px 13px; font-size:12.5px; border-radius:6px; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn-row{ margin-top: 14px; display:flex; align-items:center; gap: 10px; flex-wrap:wrap; }
+  .msg{ font-size: 13px; font-weight: 600; }
+  .msg.ok{ color: var(--green); }
+  .msg.err{ color: var(--warn); }
+
+  .overlay-bg{ display:none; position:fixed; inset:0; background: rgba(43,38,32,0.4); z-index:40; }
+  .overlay-bg.open{ display:block; }
+  .detail-panel{ position:fixed; top:0; right:0; height:100vh; height:100dvh; width:min(520px, 100vw); background: var(--panel); box-shadow: -8px 0 30px rgba(0,0,0,0.15); z-index:41; transform: translateX(100%); transition: transform .2s ease; overflow-y:auto; }
+  .detail-panel.open{ transform: translateX(0); }
+  .detail-header{ padding:16px 16px 12px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); z-index:2; }
+  .detail-header h3{ font-family:'Fraunces', serif; font-size:17px; margin:0 0 3px; padding-right:30px; }
+  .detail-header p{ margin:0; color:var(--ink-soft); font-size:12px; font-family:'IBM Plex Mono', monospace; }
+  .detail-close{ position:absolute; top:12px; right:12px; background:var(--panel-2); border:none; font-size:20px; width:34px; height:34px; border-radius:50%; cursor:pointer; color:var(--ink-soft); }
+  .detail-body{ padding: 14px 16px 30px; }
+  .lot-card{ background:var(--panel-2); border-radius:8px; padding:13px; margin-bottom:10px; border-left: 5px solid var(--copper); }
+  .lot-card .lp-title{ font-weight:700; font-size:14px; margin-bottom:2px; }
+  .lot-card .lp-meta{ font-size:12px; color:var(--ink-soft); margin-bottom:8px; }
+  .lot-card .lp-meta span{ font-family:'IBM Plex Mono', monospace; }
+  .lot-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .inline-form{ margin-top:10px; padding-top:10px; border-top:1px dashed var(--line); display:none; }
+  .inline-form.open{ display:block; }
+  .entree-row{ border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:10px; background:#fff; }
+
+  .divider-label{ font-family:'IBM Plex Mono', monospace; font-size: 10.5px; font-weight:600; color: var(--ink-soft); text-transform:uppercase; letter-spacing: 0.08em; margin: 14px 0 10px; display:flex; align-items:center; gap:10px; }
+  .divider-label::after{ content:''; flex:1; height:1px; background: var(--line); }
+
+  .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin: 0 -16px; padding: 0 16px; }
+  table.data{ width:100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+  table.data th{ text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color: var(--ink-soft); padding: 8px 9px; border-bottom: 2px solid var(--line); white-space:nowrap; }
+  table.data td{ padding: 9px 9px; border-bottom: 1px solid var(--line); vertical-align:middle; white-space:nowrap; }
+  table.data tr:last-child td{ border-bottom:none; }
+  .mono{ font-family:'IBM Plex Mono', monospace; font-size: 12px; }
+  .tag{ display:inline-block; padding: 3px 9px; border-radius: 6px; font-size: 10.5px; font-weight: 700; text-transform:uppercase; letter-spacing:.02em; }
+  .tag.entree{ background: var(--green-soft); color: var(--green); }
+  .tag.sortie{ background: var(--warn-soft); color: var(--warn); }
+  .tag.deplacement{ background: var(--copper-soft); color: var(--copper); }
+
+  .search-box{ position:relative; margin-bottom:14px; }
+  .search-box input{ width:100%; font-family:'Inter'; font-size:16px; padding:12px 14px 12px 40px; border-radius:9px; border:1.5px solid var(--line); background:#fff; }
+  .search-box input:focus{ outline:none; border-color:var(--copper); }
+  .search-box svg{ position:absolute; left:13px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--ink-soft); }
+
+  .empty-state{ text-align:center; padding: 24px 8px; color: var(--ink-soft); }
+  .empty-state svg{ width:38px; height:38px; margin-bottom:8px; opacity:.6; }
+
+  .config-cellule{ border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  .config-cellule .cfg-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px; }
+  .config-cellule .cfg-head input{ font-family:'Fraunces'; font-weight:600; font-size:14.5px; border:none; background:transparent; padding:2px 4px; border-radius:4px; min-width:0; flex:1; }
+  .config-cellule .cfg-head input:focus{ outline:1.5px solid var(--copper); background:#fff; }
+  .ligne-row{ display:flex; align-items:center; gap:8px; padding:8px 0; font-size:12.5px; flex-wrap:wrap; border-bottom:1px solid var(--line); }
+  .ligne-row:last-of-type{ border-bottom:none; }
+  .ligne-row input[type=text]{ font-family:'Inter'; font-size:13px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; width:140px; }
+  .ligne-row input[type=number]{ font-family:'IBM Plex Mono'; font-size:12.5px; padding:6px 6px; border:1px solid var(--line); border-radius:6px; width:52px; }
+  .hpos-scroller{ display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:6px 2px 8px; width:100%; }
+  .hpos-item{ display:flex; flex-direction:column; align-items:center; gap:3px; flex-shrink:0; }
+  .hpos-item span{ font-size:9.5px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; }
+  .hpos-item input{ width:40px; font-family:'IBM Plex Mono'; font-size:12px; padding:5px 3px; border:1px solid var(--line); border-radius:5px; text-align:center; }
+  .bulk-hauteur{ display:flex; align-items:center; gap:6px; margin-top:6px; font-size:12px; color:var(--ink-soft); flex-wrap:wrap; }
+  .bulk-hauteur input{ width:48px; font-family:'IBM Plex Mono'; font-size:12px; padding:5px 6px; border:1px solid var(--line); border-radius:5px; }
+  .del-btn{ background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px; text-decoration:underline; flex-shrink:0; }
+  .del-btn:hover{ color: var(--warn); }
+  .loading{ text-align:center; padding:60px 0; color: var(--ink-soft); font-family:'Fraunces'; font-size:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app-header">
+    <div class="brand">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="24" cy="30" rx="13" ry="15" fill="#A85C2E"/>
+        <ellipse cx="24" cy="30" rx="13" ry="15" fill="url(#g)" opacity="0.5"/>
+        <path d="M24 15C22 9 20 6 17 3" stroke="#4E6647" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M24 15C25.5 9 27 6 30 3" stroke="#4E6647" stroke-width="2.5" stroke-linecap="round"/>
+        <defs><linearGradient id="g" x1="11" y1="15" x2="37" y2="45"><stop stop-color="#D98B54"/><stop offset="1" stop-color="#8B4423"/></linearGradient></defs>
+      </svg>
+      <div>
+        <h1>Plan de stockage</h1>
+        <p>Partagé en temps réel · cellules, lignes, positions, niveaux</p>
+      </div>
+    </div>
+    <div class="header-stats" id="headerStats"></div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="coupe" class="active">Stockage</button>
+    <button data-tab="recherche">Recherche</button>
+    <button data-tab="historique">Historique</button>
+    <button data-tab="cellules">Cellules</button>
+  </nav>
+
+  <div id="app"><div class="loading">Chargement du plan…</div></div>
+</div>
+
+<div class="overlay-bg" id="overlayBg"></div>
+<div class="detail-panel" id="detailPanel"></div>
+
+<script>
+(function(){
+  let state = { cellules: [], lots: [], transactions: [] };
+  let loaded = false;
+  const STORE_KEY = 'palox-plan-stockage-v3';
+  const STORE_KEY_LEGACY = 'palox-plan-stockage-v2';
+  let currentTab = 'coupe';
+  let currentCelluleId = null;
+  let currentLigneId = null;
+  const COLOR_PALETTE = ['#A85C2E','#4E6647','#3E5C76','#8B5FBF','#B0793E','#5C7A6E','#7A4B4B','#5A6B8C','#946846','#3F7161'];
+
+  function uid(){ return Math.random().toString(36).slice(2,9); }
+  function today(){ return new Date().toISOString().slice(0,10); }
+  function fmtDate(d){ const dt = new Date(d+"T00:00:00"); return dt.toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}); }
+  function fmt(n){ return (Math.round(n*100)/100).toString(); }
+  function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function isPanelOpen(){ return document.getElementById('detailPanel').classList.contains('open'); }
+
+  async function loadState(){
+    let raw = null;
+    try{
+      const r = await window.storage.get(STORE_KEY, true);
+      if(r && r.value) raw = r.value;
+    }catch(e){ /* pas encore de donnees partagees */ }
+    if(!raw){
+      try{
+        const legacy = await window.storage.get(STORE_KEY_LEGACY, false);
+        if(legacy && legacy.value) raw = legacy.value;
+      }catch(e){ /* pas de donnees anciennes non plus */ }
+    }
+    const hadNothingToLoad = !raw;
+    if(raw){ try{ state = JSON.parse(raw); }catch(e){ state = { cellules:[], lots:[], transactions:[] }; } }
+    if(!state.cellules || state.cellules.length===0){ seedDefault(); }
+    migrate();
+    currentCelluleId = state.cellules[0] ? state.cellules[0].id : null;
+    currentLigneId = currentCelluleId ? state.cellules[0].lignes[0].id : null;
+    loaded = true;
+    render();
+    if(hadNothingToLoad) await saveState();
+    startPolling();
+  }
+  let saveChain = Promise.resolve();
+  let saveStatusTimer = null;
+  let localFallback = null; // dernier etat sauvegarde avec succes, garde en memoire pour l'export de secours
+  function setSaveStatus(status){
+    const el = document.getElementById('saveStatus');
+    if(!el) return;
+    clearTimeout(saveStatusTimer);
+    if(status==='saving'){ el.textContent = 'Sauvegarde…'; el.style.color = 'var(--ink-soft)'; el.style.display='inline'; }
+    else if(status==='ok'){ el.textContent = '✓ Sauvegardé'; el.style.color = 'var(--green)'; el.style.display='inline'; saveStatusTimer = setTimeout(()=>{ el.style.display='none'; }, 2000); }
+    else if(status==='error'){ el.innerHTML = '⚠ Non sauvegardé <button id="retrySaveBtn" style="border:none;background:none;color:var(--warn);text-decoration:underline;cursor:pointer;font-size:11.5px;font-weight:700;padding:0;">réessayer</button>'; el.style.color = 'var(--warn)'; el.style.display='inline';
+      const rb = document.getElementById('retrySaveBtn'); if(rb) rb.addEventListener('click', ()=>saveState());
+    }
+  }
+  function saveState(){
+    saveChain = saveChain.then(()=>doSaveWithRetry(4));
+    return saveChain;
+  }
+  async function doSaveWithRetry(retriesLeft, delay){
+    delay = delay || 1000;
+    setSaveStatus('saving');
+    try{
+      await window.storage.set(STORE_KEY, JSON.stringify(state), true);
+      localFallback = JSON.stringify(state);
+      setSaveStatus('ok');
+    }catch(e){
+      console.error("Erreur de sauvegarde", e);
+      if(retriesLeft>0){
+        await new Promise(r=>setTimeout(r, delay));
+        return doSaveWithRetry(retriesLeft-1, Math.min(delay*2, 8000));
+      }
+      setSaveStatus('error');
+    }
+  }
+  function exportBackup(){
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sauvegarde-plan-stockage-'+today()+'.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  }
+  function importBackup(file){
+    const reader = new FileReader();
+    reader.onload = async (ev)=>{
+      try{
+        const parsed = JSON.parse(ev.target.result);
+        if(!parsed.cellules){ alert('Fichier invalide : ce n\'est pas une sauvegarde reconnue.'); return; }
+        if(!confirm('Remplacer les données actuelles par cette sauvegarde ?')) return;
+        state = parsed;
+        migrate();
+        await saveState();
+        renderHeaderStats();
+        renderTab(currentTab);
+      }catch(e){ alert('Impossible de lire ce fichier : '+e.message); }
+    };
+    reader.readAsText(file);
+  }
+  function startPolling(){
+    setInterval(async ()=>{
+      if(isPanelOpen()) return;
+      try{
+        const r = await window.storage.get(STORE_KEY, true);
+        if(r && r.value && r.value !== JSON.stringify(state)){
+          state = JSON.parse(r.value);
+          migrate();
+          render();
+        }
+      }catch(e){}
+    }, 6000);
+  }
+  async function manualRefresh(){
+    const btn = document.getElementById('refreshBtn');
+    if(btn) btn.classList.add('spin');
+    const statusEl = document.getElementById('saveStatus');
+    const hadPendingError = statusEl && statusEl.textContent.indexOf('⚠')===0;
+    try{
+      const r = await window.storage.get(STORE_KEY, true);
+      if(r && r.value){ state = JSON.parse(r.value); migrate(); }
+    }catch(e){}
+    if(hadPendingError) saveState();
+    render();
+    setTimeout(()=>{ if(btn) btn.classList.remove('spin'); }, 500);
+  }
+
+  function migrate(){
+    state.cellules.forEach(c=>{
+      c.lignes.forEach(l=>{
+        if(!l.hauteurParPosition){
+          const fallback = l.hauteurMax || 4;
+          l.hauteurParPosition = Array(l.positions).fill(fallback);
+        }
+        while(l.hauteurParPosition.length < l.positions) l.hauteurParPosition.push(l.hauteurParPosition[l.hauteurParPosition.length-1] || 4);
+        if(l.hauteurParPosition.length > l.positions) l.hauteurParPosition = l.hauteurParPosition.slice(0, l.positions);
+      });
+    });
+    const seen = {};
+    state.lots.forEach(l=>{
+      if(l.hauteurDebut) return;
+      const key = l.celluleId+'|'+l.ligneId+'|'+l.position;
+      const used = seen[key] || 0;
+      l.hauteurDebut = used + 1;
+      seen[key] = used + (l.nbPalox||1);
+    });
+  }
+
+  function seedDefault(){
+    function ligne(nom, positions, hauteurMax){ return { id: uid(), nom, positions, hauteurParPosition: Array(positions).fill(hauteurMax||4) }; }
+    function cellule(nom, lignes){ return { id: uid(), nom, lignes }; }
+    state.cellules = [
+      cellule("Cellule 1", [ligne("Ligne 1",13,4), ligne("Ligne 2",13,4), ligne("Ligne 3",13,4)]),
+      cellule("Cellule 2", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
+      cellule("Cellule 3", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
+      cellule("Cellule 4 LBP", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
+      cellule("Cellule 5 LBP", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
+      cellule("Cellule 6 LBP", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
+      cellule("Cellule 7 LBP Colle Carotte", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
+      cellule("Frigo 8 Cocaign", [ligne("Casiers",28,5)])
+    ];
+  }
+
+  function getCellule(id){ return state.cellules.find(c=>c.id===id); }
+  function getLigne(celluleId, ligneId){ const c = getCellule(celluleId); return c ? c.lignes.find(l=>l.id===ligneId) : null; }
+  function getHauteurMax(celluleId, ligneId, position){
+    const l = getLigne(celluleId, ligneId);
+    if(!l) return 4;
+    return l.hauteurParPosition[position-1] != null ? l.hauteurParPosition[position-1] : 4;
+  }
+  function lotsInCase(celluleId, ligneId, position){ return state.lots.filter(l=>l.celluleId===celluleId && l.ligneId===ligneId && l.position===position); }
+  function lotById(id){ return state.lots.find(l=>l.id===id); }
+  function lotHauteurFin(l){ return l.hauteurDebut + l.nbPalox - 1; }
+  function caseLabel(celluleId, ligneId, position){
+    const c = getCellule(celluleId), l = getLigne(celluleId, ligneId);
+    return (c?c.nom:'?') + " — " + (l?l.nom:'?') + ", Position " + position;
+  }
+  function addTx(type, data){ state.transactions.unshift(Object.assign({ id: uid(), type, date: data.date || today() }, data)); }
+  function totalPalox(){ return state.lots.reduce((s,l)=>s+l.nbPalox,0); }
+
+  function rangesOverlap(aS,aE,bS,bE){ return aS<=bE && bS<=aE; }
+  function occupiedRanges(celluleId,ligneId,position, excludeLotId){
+    return lotsInCase(celluleId,ligneId,position)
+      .filter(l=> l.id!==excludeLotId)
+      .map(l=>({ start: l.hauteurDebut, end: lotHauteurFin(l), lot: l }))
+      .sort((a,b)=>a.start-b.start);
+  }
+  function nextFreeStartFromRanges(ranges, count, hauteurMax){
+    for(let start=1; start+count-1<=hauteurMax; start++){
+      const end = start+count-1;
+      if(!ranges.some(r=>rangesOverlap(start,end,r.start,r.end))) return start;
+    }
+    return null;
+  }
+  function nextFreeStart(celluleId,ligneId,position,count,hauteurMax){
+    return nextFreeStartFromRanges(occupiedRanges(celluleId,ligneId,position), count, hauteurMax);
+  }
+  function validateRange(celluleId,ligneId,position,hauteurDebut,count,hauteurMax,excludeLotId){
+    const end = hauteurDebut+count-1;
+    if(hauteurDebut<1 || !Number.isFinite(end) || end>hauteurMax) return { ok:false, reason:'depasse' };
+    const ranges = occupiedRanges(celluleId,ligneId,position,excludeLotId);
+    if(ranges.some(r=>rangesOverlap(hauteurDebut,end,r.start,r.end))) return { ok:false, reason:'chevauche' };
+    return { ok:true };
+  }
+  function colorForProduit(produit){
+    const key = (produit||'').trim().toLowerCase();
+    let h=0; for(let i=0;i<key.length;i++){ h = (h*31 + key.charCodeAt(i)) >>> 0; }
+    return COLOR_PALETTE[h % COLOR_PALETTE.length];
+  }
+  function colorForLot(l){ return colorForProduit(l.produit); }
+
+  // ---------- RENDER ----------
+  function render(){ if(!loaded) return; renderHeaderStats(); renderTab(currentTab); }
+  function renderHeaderStats(){
+    document.getElementById('headerStats').innerHTML =
+      '<div class="stat-pill"><span class="dot green"></span>Palox <b>'+fmt(totalPalox())+'</b></div>'+
+      '<div class="stat-pill"><span class="dot"></span>Cellules <b>'+state.cellules.length+'</b></div>'+
+      '<span id="saveStatus" style="font-size:11.5px;font-weight:600;display:none;"></span>'+
+      '<button class="refresh-btn" id="refreshBtn" title="Actualiser">⟳</button>';
+    document.getElementById('refreshBtn').addEventListener('click', manualRefresh);
+  }
+  function renderTab(tab){
+    currentTab = tab;
+    document.querySelectorAll('nav.tabs button').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
+    const app = document.getElementById('app');
+    if(tab==='coupe') app.innerHTML = viewCoupe();
+    if(tab==='recherche') app.innerHTML = viewRecherche();
+    if(tab==='historique') app.innerHTML = viewHistorique();
+    if(tab==='cellules') app.innerHTML = viewCellules();
+    bindTabEvents(tab);
+  }
+
+  function viewCoupe(){
+    if(state.cellules.length===0){
+      return '<div class="card">'+emptyState("Aucune cellule configurée", "Crée une cellule dans l'onglet « Cellules » pour commencer.")+'</div>';
+    }
+    if(!currentCelluleId || !getCellule(currentCelluleId)) currentCelluleId = state.cellules[0].id;
+    const c = getCellule(currentCelluleId);
+    if(!currentLigneId || !getLigne(c.id, currentLigneId)) currentLigneId = c.lignes[0].id;
+    const l = getLigne(c.id, currentLigneId);
+
+    const celluleTabsHtml = state.cellules.map(cc=>{
+      const n = state.lots.filter(x=>x.celluleId===cc.id).reduce((s,x)=>s+x.nbPalox,0);
+      return '<button data-cellule="'+cc.id+'" class="'+(cc.id===c.id?'active':'')+'">'+escapeHtml(cc.nom)+' <span class="n">('+fmt(n)+')</span></button>';
+    }).join('');
+    const ligneTabsHtml = c.lignes.map(ll=>'<button data-ligne="'+ll.id+'" class="'+(ll.id===l.id?'active':'')+'">'+escapeHtml(ll.nom)+'</button>').join('');
+
+    const maxHauteur = Math.max(...l.hauteurParPosition, 1);
+    let thead = '<tr><th></th>';
+    for(let p=1; p<=l.positions; p++) thead += '<th>P'+p+'</th>';
+    thead += '</tr>';
+
+    let rows = '';
+    const produitsSeen = {};
+    for(let h=maxHauteur; h>=1; h--){
+      rows += '<tr><td class="niveaulabel">Niv. '+h+'</td>';
+      for(let p=1; p<=l.positions; p++){
+        const hMaxHere = l.hauteurParPosition[p-1];
+        if(h > hMaxHere){
+          rows += '<td><div class="coupe-cell disabled"></div></td>';
+          continue;
+        }
+        const lots = lotsInCase(c.id, l.id, p);
+        const occ = lots.find(x => h>=x.hauteurDebut && h<=lotHauteurFin(x));
+        if(occ){
+          produitsSeen[(occ.produit||'').trim().toLowerCase()] = occ.produit;
+          const shortName = (occ.produit||'').slice(0,9);
+          rows += '<td><div class="coupe-cell" style="background:'+colorForLot(occ)+'" data-lot="'+occ.id+'">'+escapeHtml(shortName)+'</div></td>';
+        } else {
+          rows += '<td><div class="coupe-cell empty" data-case="'+c.id+'|'+l.id+'|'+p+'" data-hauteur="'+h+'"></div></td>';
+        }
+      }
+      rows += '</tr>';
+    }
+    rows += '<tr><td class="niveaulabel">Sol</td>' + Array(l.positions).fill('<td></td>').join('') + '</tr>';
+
+    const legend = Object.keys(produitsSeen).length ? ('<div class="coupe-legend">'+Object.keys(produitsSeen).map(key=>{
+      return '<span><span class="lg-swatch" style="background:'+colorForProduit(produitsSeen[key])+'"></span>'+escapeHtml(produitsSeen[key])+'</span>';
+    }).join('')+'</div>') : '';
+
+    return '<div class="cellule-tabs" id="coupeCelluleTabs">'+celluleTabsHtml+'</div>'+
+      '<div class="ligne-tabs" id="coupeLigneTabs">'+ligneTabsHtml+'</div>'+
+      '<div class="card"><h2>'+escapeHtml(c.nom)+' — '+escapeHtml(l.nom)+'</h2>'+
+      '<p class="sub">Vue en coupe : chaque colonne est une position, chaque ligne un niveau d\'empilement (du sol vers le haut). Touche une case pour voir ou modifier son contenu.</p>'+
+      '<div class="coupe-grid-wrap"><table class="coupe"><thead>'+thead+'</thead><tbody>'+rows+'</tbody></table></div>'+
+      legend+
+      '</div>';
+  }
+
+  function emptyState(title, sub){
+    return '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M3 11h18M8 7V4h8v3"/></svg>'+
+      '<div style="font-family:\'Fraunces\';font-size:15px;color:var(--ink);margin-bottom:4px;">'+title+'</div><div style="font-size:13px;">'+sub+'</div></div>';
+  }
+
+  // ---------- DETAIL PANEL ----------
+  let entreeRowCounter = 0;
+
+  function openCaseDetail(celluleId, ligneId, position){
+    const lots = lotsInCase(celluleId, ligneId, position).sort((a,b)=>a.hauteurDebut-b.hauteurDebut);
+    const label = caseLabel(celluleId, ligneId, position);
+    const hMax = getHauteurMax(celluleId, ligneId, position);
+
+    let lotsHtml = lots.length===0
+      ? '<p style="color:var(--ink-soft);font-size:13.5px;">Aucun palox ici pour le moment.</p>'
+      : lots.map(l=>{
+          const poidsStr = l.poids!=null ? (fmt(l.poids)+' kg') : 'poids inconnu';
+          return '<div class="lot-card" style="border-left-color:'+colorForLot(l)+'" data-lot="'+l.id+'">'+
+            '<div class="lp-title">'+escapeHtml(l.produit)+'</div>'+
+            '<div class="lp-meta">Lot <span>'+escapeHtml(l.lot||'—')+'</span>'+
+              (l.parcelle? ' · Parcelle <span>'+escapeHtml(l.parcelle)+'</span>':'')+
+              (l.calibre? ' · Calibre <span>'+escapeHtml(l.calibre)+'</span>':'')+
+              (l.traitement? ' · '+escapeHtml(l.traitement):'')+
+              '<br>Niveaux <span>'+l.hauteurDebut+'-'+lotHauteurFin(l)+'</span> · '+fmt(l.nbPalox)+' palox · '+poidsStr+' · entré le '+fmtDate(l.dateEntree)+
+              (l.commentaire? '<br>« '+escapeHtml(l.commentaire)+' »':'')+
+            '</div>'+
+            '<div class="lot-actions">'+
+              '<button class="btn btn-sm btn-warn" data-act="sortie" data-lot="'+l.id+'">Sortie</button>'+
+              '<button class="btn btn-sm btn-blue" data-act="deplacer" data-lot="'+l.id+'">Déplacer</button>'+
+            '</div>'+
+            '<div class="inline-form" id="form-sortie-'+l.id+'">'+formSortie(l)+'</div>'+
+            '<div class="inline-form" id="form-deplacer-'+l.id+'">'+formDeplacer(l)+'</div>'+
+          '</div>';
+        }).join('');
+
+    entreeRowCounter = 0;
+
+    const panel = document.getElementById('detailPanel');
+    panel.innerHTML =
+      '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>Emplacement</h3><p>'+escapeHtml(label)+' · max '+hMax+' niveaux ici</p></div>'+
+      '<div class="detail-body">'+
+        lotsHtml+
+        '<div class="divider-label">Ajouter un ou plusieurs palox ici</div>'+
+        '<p style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">Le niveau est toujours calculé automatiquement (empilement sans trou, à partir d\'ici). Pour une grande quantité, indique simplement le nombre de palox : ça continue tout seul sur la colonne suivante, puis la ligne suivante si besoin.</p>'+
+        formEntree(celluleId, ligneId, position)+
+      '</div>';
+    panel.classList.add('open');
+    document.getElementById('overlayBg').classList.add('open');
+    panel.dataset.cellule = celluleId; panel.dataset.ligne = ligneId; panel.dataset.position = position;
+    bindDetailEvents();
+  }
+  function closeDetail(){
+    document.getElementById('detailPanel').classList.remove('open');
+    document.getElementById('overlayBg').classList.remove('open');
+  }
+
+  function entreeRowHtml(idx){
+    return '<div class="entree-row" data-row-idx="'+idx+'">'+
+      '<div class="grid-form two">'+
+        '<label class="field">Produit<input type="text" data-f="produit" placeholder="ECHALOTE" required></label>'+
+        '<label class="field">Lot<input type="text" data-f="lot" placeholder="L167GB03"></label>'+
+        '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
+        '<label class="field">Calibre<input type="text" data-f="calibre" placeholder="30/40"></label>'+
+        '<label class="field">Traitement<input type="text" data-f="traitement" placeholder="TRESSE, RDF, BIO…"></label>'+
+        '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required><span class="hint">Empile automatiquement, sans trou — puis colonne/ligne suivante si besoin</span></label>'+
+        '<label class="field">Poids (kg) — optionnel<input type="number" min="0" step="0.01" data-f="poids"></label>'+
+        '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" placeholder="observations…"></label>'+
+      '</div>'+
+      (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer ce palox de la saisie</button>' : '')+
+    '</div>';
+  }
+  function maxOccupiedHauteur(celluleId,ligneId,position){
+    const ranges = occupiedRanges(celluleId,ligneId,position);
+    return ranges.length ? Math.max(...ranges.map(r=>r.end)) : 0;
+  }
+  function planAutoFill(celluleId, ligneId, startPosition, totalCaisses){
+    const cellule = getCellule(celluleId);
+    const startIdx = cellule.lignes.findIndex(l=>l.id===ligneId);
+    const order = cellule.lignes.slice(startIdx).concat(cellule.lignes.slice(0, startIdx));
+    let remaining = totalCaisses;
+    const segments = [];
+    order.forEach((ligneObj, idx)=>{
+      const posStart = (idx===0) ? startPosition : 1;
+      for(let p=posStart; p<=ligneObj.positions && remaining>0; p++){
+        const hMaxHere = ligneObj.hauteurParPosition[p-1];
+        const used = maxOccupiedHauteur(celluleId, ligneObj.id, p);
+        const free = hMaxHere - used;
+        if(free<=0) continue;
+        const place = Math.min(free, remaining);
+        segments.push({ celluleId, ligneId: ligneObj.id, position: p, hauteurDebut: used+1, nbPalox: place });
+        remaining -= place;
+      }
+    });
+    return { segments, remaining };
+  }
+  function formEntree(celluleId, ligneId, position){
+    return '<form id="formEntree" data-cellule="'+celluleId+'" data-ligne="'+ligneId+'" data-position="'+position+'">'+
+      '<div id="entreeRows">'+entreeRowHtml(0)+'</div>'+
+      '<button type="button" class="btn btn-ghost btn-sm" id="addEntreeRow" style="margin-top:4px;">+ Ajouter un autre palox ici</button>'+
+      '<div class="grid-form two" style="margin-top:12px;">'+
+        '<label class="field">Date<input type="date" name="entreeDate" value="'+today()+'" required></label>'+
+      '</div>'+
+      '<div class="btn-row"><button class="btn btn-green" type="submit">Enregistrer ce(s) palox</button><span class="msg" id="entreeMsg"></span></div>'+
+    '</form>';
+  }
+  function formSortie(l){
+    return '<div class="grid-form wide-3">'+
+        '<label class="field">Nb de palox (max '+fmt(l.nbPalox)+')<input type="number" min="1" max="'+l.nbPalox+'" step="1" value="'+l.nbPalox+'" data-f="s-qty"></label>'+
+        '<label class="field">Poids sorti (kg) — optionnel<input type="number" min="0" step="0.01" data-f="s-poids"></label>'+
+        '<label class="field">Date<input type="date" value="'+today()+'" data-f="s-date"></label>'+
+        '<label class="field span-full">Commentaire<input type="text" placeholder="vente, perte, usage…" data-f="s-comment"></label>'+
+      '</div>'+
+      '<div class="btn-row"><button class="btn btn-warn btn-sm" data-confirm="sortie" data-lot="'+l.id+'">Confirmer la sortie</button>'+
+      '<button class="btn btn-ghost btn-sm" data-cancel="sortie" data-lot="'+l.id+'">Annuler</button><span class="msg" id="msg-sortie-'+l.id+'"></span></div>';
+  }
+  function formDeplacer(l){
+    const celluleOpts = state.cellules.map(c=>'<option value="'+c.id+'" '+(c.id===l.celluleId?'selected':'')+'>'+escapeHtml(c.nom)+'</option>').join('');
+    const c0 = getCellule(l.celluleId);
+    const ligneOpts = c0.lignes.map(x=>'<option value="'+x.id+'" '+(x.id===l.ligneId?'selected':'')+'>'+escapeHtml(x.nom)+'</option>').join('');
+    return '<div class="grid-form wide-3">'+
+        '<label class="field">Nb de palox (max '+fmt(l.nbPalox)+')<input type="number" min="1" max="'+l.nbPalox+'" step="1" value="'+l.nbPalox+'" data-f="d-qty" data-lot="'+l.id+'"></label>'+
+        '<label class="field">Cellule destination<select data-f="d-cellule" data-lot="'+l.id+'">'+celluleOpts+'</select></label>'+
+        '<label class="field">Ligne destination<select data-f="d-ligne" data-lot="'+l.id+'">'+ligneOpts+'</select></label>'+
+        '<label class="field">Position destination<input type="number" min="1" value="'+l.position+'" data-f="d-position" data-lot="'+l.id+'"></label>'+
+        '<label class="field">Niveau destination<input type="text" value="calculé automatiquement" disabled style="color:var(--ink-soft);background:var(--panel-2);" data-f-display="d-hauteur-display"><span class="hint" data-f="d-hauteur-hint"></span></label>'+
+        '<label class="field">Poids déplacé (kg) — optionnel<input type="number" min="0" step="0.01" data-f="d-poids"></label>'+
+        '<label class="field">Date<input type="date" value="'+today()+'" data-f="d-date"></label>'+
+        '<label class="field span-full">Commentaire<input type="text" placeholder="raison du déplacement…" data-f="d-comment"></label>'+
+      '</div>'+
+      '<div class="btn-row"><button class="btn btn-blue btn-sm" data-confirm="deplacer" data-lot="'+l.id+'">Confirmer le déplacement</button>'+
+      '<button class="btn btn-ghost btn-sm" data-cancel="deplacer" data-lot="'+l.id+'">Annuler</button><span class="msg" id="msg-deplacer-'+l.id+'"></span></div>';
+  }
+
+  function refreshSuggestedHauteurDestination(box){
+    const l = lotById(box.querySelector('[data-f="d-qty"]').dataset.lot);
+    const destCelluleId = box.querySelector('[data-f="d-cellule"]').value;
+    const destLigneId = box.querySelector('[data-f="d-ligne"]').value;
+    const destPosition = parseInt(box.querySelector('[data-f="d-position"]').value) || 1;
+    const qty = parseFloat(box.querySelector('[data-f="d-qty"]').value) || 1;
+    const hMax = getHauteurMax(destCelluleId, destLigneId, destPosition);
+    const suggestion = nextFreeStart(destCelluleId, destLigneId, destPosition, qty, hMax);
+    const hint = box.querySelector('[data-f="d-hauteur-hint"]');
+    if(hint) hint.textContent = suggestion ? ('niveaux '+suggestion+'-'+(suggestion+qty-1)) : 'ne rentre pas ici — choisis une autre position';
+  }
+
+  function collectPendingRowInputs(){
+    return Array.from(document.querySelectorAll('.entree-row')).map(row=>{
+      const get = (f)=> row.querySelector('[data-f="'+f+'"]').value;
+      return {
+        produit: get('produit').trim(), lot: get('lot').trim(), parcelle: get('parcelle').trim(),
+        calibre: get('calibre').trim(), traitement: get('traitement').trim(),
+        nbPalox: parseFloat(get('nbPalox')), poidsRaw: get('poids'), commentaire: get('commentaire').trim()
+      };
+    });
+  }
+
+  function bindDetailEvents(){
+    document.getElementById('closeDetail').addEventListener('click', closeDetail);
+    document.getElementById('overlayBg').addEventListener('click', closeDetail);
+
+    const fe = document.getElementById('formEntree');
+    if(fe){
+      const celluleId = fe.dataset.cellule, ligneId = fe.dataset.ligne, position = parseInt(fe.dataset.position);
+
+      document.getElementById('addEntreeRow').addEventListener('click', ()=>{
+        entreeRowCounter++;
+        const wrap = document.createElement('div');
+        wrap.innerHTML = entreeRowHtml(entreeRowCounter);
+        document.getElementById('entreeRows').appendChild(wrap.firstElementChild);
+      });
+      document.getElementById('entreeRows').addEventListener('click', (ev)=>{
+        if(ev.target.matches('[data-remove-row]')) ev.target.closest('.entree-row').remove();
+      });
+
+      fe.addEventListener('submit', async (ev)=>{
+        ev.preventDefault();
+        const dateVal = fe.querySelector('[name="entreeDate"]').value;
+        const rows = collectPendingRowInputs();
+        const msg = document.getElementById('entreeMsg');
+
+        for(let i=0;i<rows.length;i++){
+          if(!rows[i].produit){ msg.textContent = '✗ Palox #'+(i+1)+' : le produit est obligatoire'; msg.className='msg err'; return; }
+          if(!rows[i].nbPalox || rows[i].nbPalox<1){ msg.textContent = '✗ Palox #'+(i+1)+' : quantité invalide'; msg.className='msg err'; return; }
+        }
+
+        // curseur qui avance au fil des lignes de saisie : chaque lot commence ou l'empilement precedent s'est arrete
+        let cursorLigneId = ligneId, cursorPosition = position;
+        let totalPlaced = 0, totalRequested = 0;
+        let anyLeftover = false;
+
+        for(let i=0;i<rows.length;i++){
+          const row = rows[i];
+          totalRequested += row.nbPalox;
+          const plan = planAutoFill(celluleId, cursorLigneId, cursorPosition, row.nbPalox);
+          if(plan.segments.length===0){
+            msg.textContent = '⚠ Palox #'+(i+1)+' : plus de place disponible à partir de cet emplacement — '+row.nbPalox+' palox non placés';
+            msg.className = 'msg err';
+            anyLeftover = true;
+            break;
+          }
+          const poidsParCaisse = row.poidsRaw ? parseFloat(row.poidsRaw)/row.nbPalox : null;
+          plan.segments.forEach(seg=>{
+            const newLot = {
+              id: uid(), celluleId: seg.celluleId, ligneId: seg.ligneId, position: seg.position, hauteurDebut: seg.hauteurDebut,
+              produit: row.produit, lot: row.lot, parcelle: row.parcelle, calibre: row.calibre, traitement: row.traitement,
+              nbPalox: seg.nbPalox, poids: poidsParCaisse!=null ? Math.round(poidsParCaisse*seg.nbPalox*100)/100 : null,
+              dateEntree: dateVal, commentaire: row.commentaire
+            };
+            state.lots.push(newLot);
+            addTx('entree', { quantite: newLot.nbPalox, poids: newLot.poids, produit: row.produit, lot: row.lot, date: dateVal, commentaire: row.commentaire, label: caseLabel(seg.celluleId,seg.ligneId,seg.position)+' (niveaux '+seg.hauteurDebut+'-'+lotHauteurFin(newLot)+')' });
+            totalPlaced += seg.nbPalox;
+          });
+          if(plan.remaining>0){
+            msg.textContent = '⚠ Palox #'+(i+1)+' : '+plan.remaining+' palox n\'ont pas trouvé de place (cellule pleine à partir d\'ici)';
+            msg.className = 'msg err';
+            anyLeftover = true;
+            break;
+          }
+          // le prochain palox de la saisie continue a partir de la derniere colonne remplie
+          const lastSeg = plan.segments[plan.segments.length-1];
+          cursorLigneId = lastSeg.ligneId; cursorPosition = lastSeg.position;
+        }
+
+        await saveState();
+        renderHeaderStats();
+        openCaseDetail(celluleId, ligneId, position);
+        if(!anyLeftover){
+          const freshMsg = document.getElementById('entreeMsg');
+          if(freshMsg){ freshMsg.textContent = '✓ '+totalPlaced+' palox enregistré(s), empilés automatiquement'; freshMsg.className='msg ok'; }
+        }
+        renderTab(currentTab);
+      });
+    }
+
+
+    document.querySelectorAll('[data-act]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.lot, act = btn.dataset.act;
+        document.getElementById('form-'+act+'-'+id).classList.toggle('open');
+      });
+    });
+    document.querySelectorAll('[data-cancel]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.getElementById('form-'+btn.dataset.cancel+'-'+btn.dataset.lot).classList.remove('open');
+      });
+    });
+
+    document.querySelectorAll('[data-confirm="sortie"]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.dataset.lot; const l = lotById(id); if(!l) return;
+        const box = document.getElementById('form-sortie-'+id);
+        const qty = parseFloat(box.querySelector('[data-f="s-qty"]').value);
+        const poidsRaw = box.querySelector('[data-f="s-poids"]').value;
+        const poids = poidsRaw? parseFloat(poidsRaw): null;
+        const date = box.querySelector('[data-f="s-date"]').value;
+        const comment = box.querySelector('[data-f="s-comment"]').value;
+        const msg = document.getElementById('msg-sortie-'+id);
+        if(qty > l.nbPalox){ msg.textContent = '✗ Quantité supérieure au stock disponible'; msg.className='msg err'; return; }
+        addTx('sortie', { quantite: qty, poids: poids, produit: l.produit, lot: l.lot, date, commentaire: comment, label: caseLabel(l.celluleId,l.ligneId,l.position) });
+        if(qty >= l.nbPalox){ state.lots = state.lots.filter(x=>x.id!==id); }
+        else{ l.nbPalox -= qty; if(poids!=null && l.poids!=null) l.poids = Math.max(0, l.poids - poids); }
+        await saveState();
+        renderHeaderStats();
+        openCaseDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne, parseInt(document.getElementById('detailPanel').dataset.position));
+        renderTab(currentTab);
+      });
+    });
+
+    document.querySelectorAll('[data-f="d-cellule"]').forEach(sel=>{
+      sel.addEventListener('change', ()=>{
+        const c = getCellule(sel.value);
+        const box = sel.closest('.inline-form');
+        const ligneSel = box.querySelector('[data-f="d-ligne"]');
+        ligneSel.innerHTML = c.lignes.map(x=>'<option value="'+x.id+'">'+escapeHtml(x.nom)+'</option>').join('');
+        refreshSuggestedHauteurDestination(box);
+      });
+    });
+    document.querySelectorAll('[data-f="d-ligne"], [data-f="d-position"], [data-f="d-qty"]').forEach(inp=>{
+      inp.addEventListener('change', ()=>{ refreshSuggestedHauteurDestination(inp.closest('.inline-form')); });
+    });
+
+    document.querySelectorAll('[data-confirm="deplacer"]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.dataset.lot; const l = lotById(id); if(!l) return;
+        const box = document.getElementById('form-deplacer-'+id);
+        const qty = parseFloat(box.querySelector('[data-f="d-qty"]').value);
+        const destCelluleId = box.querySelector('[data-f="d-cellule"]').value;
+        const destLigneId = box.querySelector('[data-f="d-ligne"]').value;
+        const destPosition = parseInt(box.querySelector('[data-f="d-position"]').value);
+        const poidsRaw = box.querySelector('[data-f="d-poids"]').value;
+        const poids = poidsRaw? parseFloat(poidsRaw): null;
+        const date = box.querySelector('[data-f="d-date"]').value;
+        const comment = box.querySelector('[data-f="d-comment"]').value;
+        const msg = document.getElementById('msg-deplacer-'+id);
+        if(qty > l.nbPalox){ msg.textContent = '✗ Quantité supérieure au stock disponible'; msg.className='msg err'; return; }
+        const destLigneObj = getLigne(destCelluleId, destLigneId);
+        if(!destLigneObj || destPosition < 1 || destPosition > destLigneObj.positions){ msg.textContent = '✗ Position invalide pour cette ligne'; msg.className='msg err'; return; }
+        const destHMax = getHauteurMax(destCelluleId, destLigneId, destPosition);
+        const isSameSpot = destCelluleId===l.celluleId && destLigneId===l.ligneId && destPosition===l.position;
+        // le niveau est toujours calcule automatiquement (empilement sans trou) : jamais choisi a la main
+        const destRanges = occupiedRanges(destCelluleId, destLigneId, destPosition, isSameSpot? l.id : null);
+        const destHauteur = nextFreeStartFromRanges(destRanges, qty, destHMax);
+        if(!destHauteur){ msg.textContent = '✗ Ne rentre pas à destination (hauteur max '+destHMax+' niveaux) — choisis une autre position'; msg.className='msg err'; return; }
+        if(isSameSpot && destHauteur===l.hauteurDebut && qty===l.nbPalox){ msg.textContent = '✗ La destination est identique à la source'; msg.className='msg err'; return; }
+
+        const dest = Object.assign({}, l, { id: uid(), celluleId: destCelluleId, ligneId: destLigneId, position: destPosition, hauteurDebut: destHauteur, nbPalox: qty, poids: poids });
+        state.lots.push(dest);
+        if(qty >= l.nbPalox){ state.lots = state.lots.filter(x=>x.id!==l.id); }
+        else{ l.nbPalox -= qty; if(poids!=null && l.poids!=null) l.poids = Math.max(0, l.poids - poids); }
+
+        addTx('deplacement', { quantite: qty, poids: poids, produit: l.produit, lot: l.lot, date, commentaire: comment,
+          fromLabel: caseLabel(l.celluleId,l.ligneId,l.position), toLabel: caseLabel(destCelluleId,destLigneId,destPosition)+' (niveaux '+destHauteur+'-'+(destHauteur+qty-1)+')' });
+        await saveState();
+        renderHeaderStats();
+        openCaseDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne, parseInt(document.getElementById('detailPanel').dataset.position));
+        renderTab(currentTab);
+      });
+    });
+  }
+
+  // ---------- RECHERCHE ----------
+  function viewRecherche(){
+    return '<div class="card"><h2>Recherche de palox</h2><p class="sub">Recherche par produit, lot, parcelle, calibre ou traitement.</p>'+
+      '<div class="search-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'+
+      '<input type="text" id="searchInput" placeholder="ex : L070GA43, échalote, parcelle 12, RDF…" autofocus></div>'+
+      '<div id="searchResults">'+searchResultsHtml('')+'</div></div>';
+  }
+  function searchResultsHtml(q){
+    q = (q||'').toLowerCase().trim();
+    let results = state.lots;
+    if(q){
+      results = results.filter(l => [l.produit,l.lot,l.parcelle,l.calibre,l.traitement].some(f => (f||'').toLowerCase().includes(q)));
+    }
+    if(results.length===0) return emptyState(q? "Aucun résultat" : "Commence à taper pour chercher", q? "Essaie un autre terme (produit, lot, parcelle, calibre, traitement)." : "Tous les palox enregistrés peuvent être retrouvés ici.");
+    const rows = results.map(l=>{
+      return '<tr><td>'+escapeHtml(l.produit)+'</td><td class="mono">'+escapeHtml(l.lot||'—')+'</td>'+
+        '<td>'+escapeHtml(l.parcelle||'—')+'</td><td>'+escapeHtml(l.calibre||'—')+'</td><td>'+escapeHtml(l.traitement||'—')+'</td>'+
+        '<td class="mono">'+fmt(l.nbPalox)+'</td><td class="mono">'+l.hauteurDebut+'-'+lotHauteurFin(l)+'</td>'+
+        '<td class="mono">'+(l.poids!=null? fmt(l.poids)+' kg':'—')+'</td>'+
+        '<td>'+escapeHtml(caseLabel(l.celluleId,l.ligneId,l.position))+'</td>'+
+        '<td><button class="btn btn-sm btn-copper" data-locate="'+l.id+'">Localiser</button></td></tr>';
+    }).join('');
+    return '<div class="table-scroll"><table class="data"><thead><tr><th>Produit</th><th>Lot</th><th>Parcelle</th><th>Calibre</th><th>Traitement</th><th>Palox</th><th>Niveaux</th><th>Poids</th><th>Emplacement</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  // ---------- HISTORIQUE ----------
+  function viewHistorique(){
+    return '<div class="card"><h2>Historique des mouvements</h2><p class="sub">Toutes les entrées, sorties et déplacements enregistrés.</p>'+
+      '<div id="txTableWrap">'+txTable(state.transactions)+'</div></div>';
+  }
+  function txTable(txs){
+    if(txs.length===0) return emptyState("Aucun mouvement enregistré", "L'historique se remplit à chaque entrée, sortie ou déplacement.");
+    const rows = txs.map(t=>{
+      const typeLabel = t.type==='entree' ? 'Entrée' : t.type==='sortie' ? 'Sortie' : 'Déplacement';
+      const posHtml = t.type==='deplacement' ? ('<span class="mono">'+escapeHtml(t.fromLabel)+'</span> → <span class="mono">'+escapeHtml(t.toLabel)+'</span>') : ('<span class="mono">'+escapeHtml(t.label)+'</span>');
+      return '<tr><td>'+fmtDate(t.date)+'</td><td><span class="tag '+t.type+'">'+typeLabel+'</span></td>'+
+        '<td>'+escapeHtml(t.produit||'—')+(t.lot? ' ('+escapeHtml(t.lot)+')':'')+'</td>'+
+        '<td>'+posHtml+'</td><td class="mono">'+fmt(t.quantite)+'</td>'+
+        '<td class="mono">'+(t.poids!=null? fmt(t.poids)+' kg':'—')+'</td>'+
+        '<td>'+escapeHtml(t.commentaire||'—')+'</td></tr>';
+    }).join('');
+    return '<div class="table-scroll"><table class="data"><thead><tr><th>Date</th><th>Type</th><th>Produit</th><th>Position</th><th>Palox</th><th>Poids</th><th>Commentaire</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  // ---------- CELLULES (config) ----------
+  function viewCellules(){
+    const backupSection = '<div class="card"><h2>Sauvegarde manuelle</h2>'+
+      '<p class="sub">En cas de souci avec la sauvegarde automatique, exporte un fichier de secours régulièrement, et importe-le pour restaurer tes données.</p>'+
+      '<div class="btn-row" style="margin-top:0;">'+
+        '<button class="btn btn-blue btn-sm" id="exportBackupBtn">Exporter une sauvegarde (.json)</button>'+
+        '<label class="btn btn-ghost btn-sm" style="margin:0;cursor:pointer;">Importer une sauvegarde<input type="file" id="importBackupInput" accept="application/json" style="display:none;"></label>'+
+      '</div></div>';
+    const blocks = state.cellules.map(c=>{
+      const lignesHtml = c.lignes.map(l=>{
+        const hposItems = l.hauteurParPosition.map((v,idx)=>{
+          return '<div class="hpos-item"><span>P'+(idx+1)+'</span><input type="number" min="1" value="'+v+'" data-hpos="'+c.id+'|'+l.id+'|'+idx+'"></div>';
+        }).join('');
+        return '<div class="ligne-row" data-ligne-row="'+l.id+'" style="flex-direction:column; align-items:stretch;">'+
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+            '<input type="text" value="'+escapeHtml(l.nom)+'" data-ligne-nom="'+c.id+'|'+l.id+'">'+
+            '<span style="color:var(--ink-soft)">positions:</span>'+
+            '<input type="number" min="1" value="'+l.positions+'" data-ligne-pos="'+c.id+'|'+l.id+'">'+
+            '<button class="del-btn" data-del-ligne="'+c.id+'|'+l.id+'">supprimer la ligne</button>'+
+          '</div>'+
+          '<div style="font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-top:6px;">Hauteur max par position</div>'+
+          '<div class="hpos-scroller">'+hposItems+'</div>'+
+          '<div class="bulk-hauteur">Appliquer <input type="number" min="1" value="4" data-bulk-input="'+c.id+'|'+l.id+'"> niveaux à toutes les positions'+
+            ' <button class="btn btn-ghost btn-sm" data-bulk-apply="'+c.id+'|'+l.id+'">Appliquer</button></div>'+
+        '</div>';
+      }).join('');
+      return '<div class="config-cellule" data-cellule-block="'+c.id+'">'+
+        '<div class="cfg-head"><input type="text" value="'+escapeHtml(c.nom)+'" data-cellule-nom="'+c.id+'">'+
+        '<button class="del-btn" data-del-cellule="'+c.id+'">supprimer</button></div>'+
+        lignesHtml+
+        '<button class="btn btn-ghost btn-sm" style="margin-top:8px;" data-add-ligne="'+c.id+'">+ Ajouter une ligne</button>'+
+      '</div>';
+    }).join('');
+    return backupSection+'<div class="card"><h2>Structure des cellules</h2><p class="sub">Configure les cellules, leurs lignes, le nombre de positions et la hauteur maximale d\'empilement — réglable indépendamment pour chaque position, puisque certaines colonnes vont à 4 palox de haut et d\'autres à 5. Une cellule ou ligne contenant encore du stock ne peut pas être supprimée.</p>'+
+      blocks+
+      '<button class="btn btn-copper" id="addCellule" style="margin-top:6px;">+ Nouvelle cellule</button></div>';
+  }
+
+  function bindTabEvents(tab){
+    if(tab==='coupe'){
+      document.querySelectorAll('#coupeCelluleTabs button').forEach(b=>{
+        b.addEventListener('click', ()=>{ currentCelluleId = b.dataset.cellule; currentLigneId = null; renderTab('coupe'); });
+      });
+      document.querySelectorAll('#coupeLigneTabs button').forEach(b=>{
+        b.addEventListener('click', ()=>{ currentLigneId = b.dataset.ligne; renderTab('coupe'); });
+      });
+      document.querySelectorAll('.coupe-cell:not(.disabled)').forEach(cell=>{
+        cell.addEventListener('click', ()=>{
+          if(cell.dataset.lot){
+            const l = lotById(cell.dataset.lot);
+            openCaseDetail(l.celluleId, l.ligneId, l.position);
+          } else if(cell.dataset.case){
+            const [celluleId, ligneId, position] = cell.dataset.case.split('|');
+            openCaseDetail(celluleId, ligneId, parseInt(position));
+          }
+        });
+      });
+    }
+    if(tab==='recherche'){
+      const input = document.getElementById('searchInput');
+      input.addEventListener('input', ()=>{
+        document.getElementById('searchResults').innerHTML = searchResultsHtml(input.value);
+        bindLocateButtons();
+      });
+      bindLocateButtons();
+    }
+    if(tab==='cellules'){
+      document.getElementById('exportBackupBtn').addEventListener('click', exportBackup);
+      document.getElementById('importBackupInput').addEventListener('change', (ev)=>{
+        if(ev.target.files && ev.target.files[0]) importBackup(ev.target.files[0]);
+      });
+      document.querySelectorAll('[data-cellule-nom]').forEach(inp=>{
+        inp.addEventListener('change', async ()=>{
+          getCellule(inp.dataset.celluleNom).nom = inp.value.trim() || 'Sans nom';
+          await saveState(); renderTab('cellules');
+        });
+      });
+      document.querySelectorAll('[data-ligne-nom]').forEach(inp=>{
+        inp.addEventListener('change', async ()=>{
+          const [cId, lId] = inp.dataset.ligneNom.split('|');
+          getLigne(cId,lId).nom = inp.value.trim() || 'Sans nom';
+          await saveState(); renderTab('cellules');
+        });
+      });
+      document.querySelectorAll('[data-ligne-pos]').forEach(inp=>{
+        inp.addEventListener('change', async ()=>{
+          const [cId, lId] = inp.dataset.lignePos.split('|');
+          const newVal = Math.max(1, parseInt(inp.value)||1);
+          const ligneObj = getLigne(cId,lId);
+          const maxUsed = Math.max(0, ...state.lots.filter(x=>x.celluleId===cId && x.ligneId===lId).map(x=>x.position));
+          if(newVal < maxUsed){ alert('Impossible : des palox occupent déjà la position '+maxUsed+'.'); renderTab('cellules'); return; }
+          if(newVal > ligneObj.positions){
+            while(ligneObj.hauteurParPosition.length < newVal) ligneObj.hauteurParPosition.push(ligneObj.hauteurParPosition[ligneObj.hauteurParPosition.length-1] || 4);
+          } else {
+            ligneObj.hauteurParPosition = ligneObj.hauteurParPosition.slice(0, newVal);
+          }
+          ligneObj.positions = newVal;
+          await saveState(); renderTab('cellules');
+        });
+      });
+      document.querySelectorAll('[data-hpos]').forEach(inp=>{
+        inp.addEventListener('change', async ()=>{
+          const [cId, lId, idxStr] = inp.dataset.hpos.split('|');
+          const idx = parseInt(idxStr);
+          const position = idx+1;
+          const newVal = Math.max(1, parseInt(inp.value)||1);
+          const maxUsed = Math.max(0, ...lotsInCase(cId,lId,position).map(x=>lotHauteurFin(x)));
+          if(newVal < maxUsed){ alert('Impossible : la position '+position+' contient déjà des palox jusqu\'au niveau '+maxUsed+'.'); renderTab('cellules'); return; }
+          getLigne(cId,lId).hauteurParPosition[idx] = newVal;
+          await saveState(); renderTab('cellules');
+        });
+      });
+      document.querySelectorAll('[data-bulk-apply]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const [cId, lId] = btn.dataset.bulkApply.split('|');
+          const input = document.querySelector('[data-bulk-input="'+cId+'|'+lId+'"]');
+          const newVal = Math.max(1, parseInt(input.value)||1);
+          const ligneObj = getLigne(cId,lId);
+          for(let p=1;p<=ligneObj.positions;p++){
+            const maxUsed = Math.max(0, ...lotsInCase(cId,lId,p).map(x=>lotHauteurFin(x)));
+            if(newVal < maxUsed){ alert('Impossible : la position '+p+' contient déjà des palox jusqu\'au niveau '+maxUsed+'.'); return; }
+          }
+          ligneObj.hauteurParPosition = Array(ligneObj.positions).fill(newVal);
+          await saveState(); renderTab('cellules');
+        });
+      });
+      document.querySelectorAll('[data-add-ligne]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const c = getCellule(btn.dataset.addLigne);
+          c.lignes.push({ id: uid(), nom: 'Nouvelle ligne', positions: 13, hauteurParPosition: Array(13).fill(4) });
+          await saveState(); renderTab('cellules');
+        });
+      });
+      document.querySelectorAll('[data-del-ligne]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const [cId, lId] = btn.dataset.delLigne.split('|');
+          if(state.lots.some(x=>x.celluleId===cId && x.ligneId===lId)){ alert('Cette ligne contient encore du stock, elle ne peut pas être supprimée.'); return; }
+          if(!confirm('Supprimer cette ligne ?')) return;
+          const c = getCellule(cId);
+          c.lignes = c.lignes.filter(l=>l.id!==lId);
+          await saveState(); renderTab('cellules');
+        });
+      });
+      document.querySelectorAll('[data-del-cellule]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const cId = btn.dataset.delCellule;
+          if(state.lots.some(x=>x.celluleId===cId)){ alert('Cette cellule contient encore du stock, elle ne peut pas être supprimée.'); return; }
+          if(!confirm('Supprimer cette cellule ?')) return;
+          state.cellules = state.cellules.filter(c=>c.id!==cId);
+          if(currentCelluleId===cId) currentCelluleId = state.cellules[0] ? state.cellules[0].id : null;
+          await saveState(); renderTab('cellules'); renderHeaderStats();
+        });
+      });
+      document.getElementById('addCellule').addEventListener('click', async ()=>{
+        const nom = prompt('Nom de la nouvelle cellule :', 'Nouvelle cellule');
+        if(!nom) return;
+        state.cellules.push({ id: uid(), nom: nom.trim(), lignes: [{ id: uid(), nom: 'Ligne 1', positions: 13, hauteurParPosition: Array(13).fill(4) }] });
+        await saveState(); renderTab('cellules'); renderHeaderStats();
+      });
+    }
+  }
+
+  function bindLocateButtons(){
+    document.querySelectorAll('[data-locate]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const l = lotById(btn.dataset.locate); if(!l) return;
+        currentCelluleId = l.celluleId;
+        currentLigneId = l.ligneId;
+        renderTab('coupe');
+        setTimeout(()=>{
+          const cell = document.querySelector('.coupe-cell[data-lot="'+l.id+'"]');
+          if(cell){ cell.scrollIntoView({behavior:'smooth', block:'center', inline:'center'}); }
+        }, 50);
+      });
+    });
+  }
+
+  document.getElementById('tabs').addEventListener('click', (ev)=>{
+    const btn = ev.target.closest('button[data-tab]');
+    if(btn) renderTab(btn.dataset.tab);
+  });
+
+  loadState();
+})();
+</script>
+</body>
+</html>
