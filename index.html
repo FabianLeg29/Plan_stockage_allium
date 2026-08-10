@@ -155,10 +155,44 @@
   .del-btn{ background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px; text-decoration:underline; flex-shrink:0; }
   .del-btn:hover{ color: var(--warn); }
   .loading{ text-align:center; padding:60px 0; color: var(--ink-soft); font-family:'Fraunces'; font-size:16px; }
+
+  .login-screen{ display:none; min-height:100vh; align-items:center; justify-content:center; padding: 20px; }
+  .login-card{ background: var(--panel); border:1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 24px; width: 100%; max-width: 360px; }
+  .login-card .brand{ justify-content:center; margin-bottom: 18px; }
+  .login-card form{ display:flex; flex-direction:column; gap:12px; }
+  .login-card .btn{ width:100%; margin-top:4px; }
+  .role-badge{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding: 5px 10px; border-radius:999px; }
+  .role-badge.editor{ background: var(--green-soft); color: var(--green); }
+  .role-badge.viewer{ background: var(--blue-soft); color: var(--blue); }
+  .readonly-note{ background: var(--panel-2); border:1px dashed var(--line); border-radius:8px; padding:10px 12px; font-size:12.5px; color:var(--ink-soft); }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="brand">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="24" cy="30" rx="13" ry="15" fill="#A85C2E"/>
+        <ellipse cx="24" cy="30" rx="13" ry="15" fill="url(#g2)" opacity="0.5"/>
+        <path d="M24 15C22 9 20 6 17 3" stroke="#4E6647" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M24 15C25.5 9 27 6 30 3" stroke="#4E6647" stroke-width="2.5" stroke-linecap="round"/>
+        <defs><linearGradient id="g2" x1="11" y1="15" x2="37" y2="45"><stop stop-color="#D98B54"/><stop offset="1" stop-color="#8B4423"/></linearGradient></defs>
+      </svg>
+      <div>
+        <h1>Plan de stockage</h1>
+        <p>Connexion requise</p>
+      </div>
+    </div>
+    <form id="loginForm">
+      <label class="field">Email<input type="email" id="loginEmail" autocomplete="username" required></label>
+      <label class="field">Mot de passe<input type="password" id="loginPassword" autocomplete="current-password" required></label>
+      <button class="btn btn-copper" type="submit">Se connecter</button>
+      <span class="msg err" id="loginMsg"></span>
+    </form>
+  </div>
+</div>
+
+<div class="wrap" id="mainWrap" style="display:none;">
   <header class="app-header">
     <div class="brand">
       <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -180,7 +214,7 @@
     <button data-tab="coupe" class="active">Stockage</button>
     <button data-tab="recherche">Recherche</button>
     <button data-tab="historique">Historique</button>
-    <button data-tab="cellules">Cellules</button>
+    <button data-tab="cellules" id="tabCellules">Cellules</button>
   </nav>
 
   <div id="app"><div class="loading">Chargement du plan…</div></div>
@@ -189,12 +223,30 @@
 <div class="overlay-bg" id="overlayBg"></div>
 <div class="detail-panel" id="detailPanel"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script>
 (function(){
+  // Remplace ces valeurs par la config de ton projet Firebase
+  // (Console Firebase > Paramètres du projet > Tes applications > Config SDK)
+  const firebaseConfig = {
+    apiKey: "REMPLACER_API_KEY",
+    authDomain: "REMPLACER.firebaseapp.com",
+    projectId: "REMPLACER",
+    storageBucket: "REMPLACER.appspot.com",
+    messagingSenderId: "REMPLACER",
+    appId: "REMPLACER"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const DOC_REF = db.collection('planStockage').doc('main');
+  let currentRole = 'viewer';
+  let unsubscribeSnapshot = null;
+
   let state = { cellules: [], lots: [], transactions: [] };
   let loaded = false;
-  const STORE_KEY = 'palox-plan-stockage-v3';
-  const STORE_KEY_LEGACY = 'palox-plan-stockage-v2';
   let currentTab = 'coupe';
   let currentCelluleId = null;
   let currentLigneId = null;
@@ -207,32 +259,39 @@
   function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function isPanelOpen(){ return document.getElementById('detailPanel').classList.contains('open'); }
 
-  async function loadState(){
-    let raw = null;
-    try{
-      const r = await window.storage.get(STORE_KEY, true);
-      if(r && r.value) raw = r.value;
-    }catch(e){ /* pas encore de donnees partagees */ }
-    if(!raw){
-      try{
-        const legacy = await window.storage.get(STORE_KEY_LEGACY, false);
-        if(legacy && legacy.value) raw = legacy.value;
-      }catch(e){ /* pas de donnees anciennes non plus */ }
-    }
-    const hadNothingToLoad = !raw;
+  function applyIncomingState(raw){
     if(raw){ try{ state = JSON.parse(raw); }catch(e){ state = { cellules:[], lots:[], transactions:[] }; } }
-    if(!state.cellules || state.cellules.length===0){ seedDefault(); }
     migrate();
-    currentCelluleId = state.cellules[0] ? state.cellules[0].id : null;
-    currentLigneId = currentCelluleId ? state.cellules[0].lignes[0].id : null;
-    loaded = true;
-    render();
-    if(hadNothingToLoad) await saveState();
-    startPolling();
+    if(!currentCelluleId || !getCellule(currentCelluleId)) currentCelluleId = state.cellules[0] ? state.cellules[0].id : null;
+    if(!currentLigneId || (currentCelluleId && !getLigne(currentCelluleId, currentLigneId))) currentLigneId = currentCelluleId ? getCellule(currentCelluleId).lignes[0].id : null;
+  }
+  function attachSnapshotListener(){
+    if(unsubscribeSnapshot) unsubscribeSnapshot();
+    unsubscribeSnapshot = DOC_REF.onSnapshot(async (snap)=>{
+      if(!snap.exists){
+        state = { cellules: [], lots: [], transactions: [] };
+        if(currentRole==='editor'){ seedDefault(); applyIncomingState(null); }
+        loaded = true;
+        render();
+        if(currentRole==='editor') await saveState();
+        return;
+      }
+      if(isPanelOpen()) return;
+      applyIncomingState(snap.data().data);
+      loaded = true;
+      render();
+    }, (err)=>{
+      console.error("Erreur de synchronisation Firestore", err);
+    });
+  }
+  async function refetchState(){
+    try{
+      const snap = await DOC_REF.get();
+      if(snap.exists){ applyIncomingState(snap.data().data); render(); }
+    }catch(e){ console.error(e); }
   }
   let saveChain = Promise.resolve();
   let saveStatusTimer = null;
-  let localFallback = null; // dernier etat sauvegarde avec succes, garde en memoire pour l'export de secours
   function setSaveStatus(status){
     const el = document.getElementById('saveStatus');
     if(!el) return;
@@ -251,8 +310,7 @@
     delay = delay || 1000;
     setSaveStatus('saving');
     try{
-      await window.storage.set(STORE_KEY, JSON.stringify(state), true);
-      localFallback = JSON.stringify(state);
+      await DOC_REF.set({ data: JSON.stringify(state), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
       setSaveStatus('ok');
     }catch(e){
       console.error("Erreur de sauvegarde", e);
@@ -273,6 +331,7 @@
     setTimeout(()=>URL.revokeObjectURL(url), 2000);
   }
   function importBackup(file){
+    if(currentRole!=='editor'){ alert('Réservé aux comptes de gestion.'); return; }
     const reader = new FileReader();
     reader.onload = async (ev)=>{
       try{
@@ -288,30 +347,13 @@
     };
     reader.readAsText(file);
   }
-  function startPolling(){
-    setInterval(async ()=>{
-      if(isPanelOpen()) return;
-      try{
-        const r = await window.storage.get(STORE_KEY, true);
-        if(r && r.value && r.value !== JSON.stringify(state)){
-          state = JSON.parse(r.value);
-          migrate();
-          render();
-        }
-      }catch(e){}
-    }, 6000);
-  }
   async function manualRefresh(){
     const btn = document.getElementById('refreshBtn');
     if(btn) btn.classList.add('spin');
     const statusEl = document.getElementById('saveStatus');
     const hadPendingError = statusEl && statusEl.textContent.indexOf('⚠')===0;
-    try{
-      const r = await window.storage.get(STORE_KEY, true);
-      if(r && r.value){ state = JSON.parse(r.value); migrate(); }
-    }catch(e){}
+    await refetchState();
     if(hadPendingError) saveState();
-    render();
     setTimeout(()=>{ if(btn) btn.classList.remove('spin'); }, 500);
   }
 
@@ -405,11 +447,17 @@
     document.getElementById('headerStats').innerHTML =
       '<div class="stat-pill"><span class="dot green"></span>Palox <b>'+fmt(totalPalox())+'</b></div>'+
       '<div class="stat-pill"><span class="dot"></span>Cellules <b>'+state.cellules.length+'</b></div>'+
+      '<span class="role-badge '+currentRole+'">'+(currentRole==='editor'?'Gestion':'Consultation')+'</span>'+
       '<span id="saveStatus" style="font-size:11.5px;font-weight:600;display:none;"></span>'+
-      '<button class="refresh-btn" id="refreshBtn" title="Actualiser">⟳</button>';
+      '<button class="refresh-btn" id="refreshBtn" title="Actualiser">⟳</button>'+
+      '<button class="btn btn-ghost btn-sm" id="logoutBtn">Déconnexion</button>';
     document.getElementById('refreshBtn').addEventListener('click', manualRefresh);
+    document.getElementById('logoutBtn').addEventListener('click', ()=>auth.signOut());
+    const tabCellules = document.getElementById('tabCellules');
+    if(tabCellules) tabCellules.style.display = currentRole==='editor' ? '' : 'none';
   }
   function renderTab(tab){
+    if(tab==='cellules' && currentRole!=='editor') tab = 'coupe';
     currentTab = tab;
     document.querySelectorAll('nav.tabs button').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
     const app = document.getElementById('app');
@@ -422,7 +470,7 @@
 
   function viewCoupe(){
     if(state.cellules.length===0){
-      return '<div class="card">'+emptyState("Aucune cellule configurée", "Crée une cellule dans l'onglet « Cellules » pour commencer.")+'</div>';
+      return '<div class="card">'+emptyState("Aucune cellule configurée", currentRole==='editor' ? "Crée une cellule dans l'onglet « Cellules » pour commencer." : "Aucune donnée pour le moment — contacte un compte de gestion.")+'</div>';
     }
     if(!currentCelluleId || !getCellule(currentCelluleId)) currentCelluleId = state.cellules[0].id;
     const c = getCellule(currentCelluleId);
@@ -503,25 +551,31 @@
               '<br>Niveaux <span>'+l.hauteurDebut+'-'+lotHauteurFin(l)+'</span> · '+fmt(l.nbPalox)+' palox · '+poidsStr+' · entré le '+fmtDate(l.dateEntree)+
               (l.commentaire? '<br>« '+escapeHtml(l.commentaire)+' »':'')+
             '</div>'+
+            (currentRole==='editor' ? (
             '<div class="lot-actions">'+
               '<button class="btn btn-sm btn-warn" data-act="sortie" data-lot="'+l.id+'">Sortie</button>'+
               '<button class="btn btn-sm btn-blue" data-act="deplacer" data-lot="'+l.id+'">Déplacer</button>'+
             '</div>'+
             '<div class="inline-form" id="form-sortie-'+l.id+'">'+formSortie(l)+'</div>'+
-            '<div class="inline-form" id="form-deplacer-'+l.id+'">'+formDeplacer(l)+'</div>'+
+            '<div class="inline-form" id="form-deplacer-'+l.id+'">'+formDeplacer(l)+'</div>'
+            ) : '')+
           '</div>';
         }).join('');
 
     entreeRowCounter = 0;
+
+    const addSectionHtml = currentRole==='editor' ?
+        '<div class="divider-label">Ajouter un ou plusieurs palox ici</div>'+
+        '<p style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">Le niveau est toujours calculé automatiquement (empilement sans trou, à partir d\'ici). Pour une grande quantité, indique simplement le nombre de palox : ça continue tout seul sur la colonne suivante, puis la ligne suivante si besoin.</p>'+
+        formEntree(celluleId, ligneId, position)
+      : '<div class="readonly-note">Consultation seule — contacte un compte de gestion pour modifier cet emplacement.</div>';
 
     const panel = document.getElementById('detailPanel');
     panel.innerHTML =
       '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>Emplacement</h3><p>'+escapeHtml(label)+' · max '+hMax+' niveaux ici</p></div>'+
       '<div class="detail-body">'+
         lotsHtml+
-        '<div class="divider-label">Ajouter un ou plusieurs palox ici</div>'+
-        '<p style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">Le niveau est toujours calculé automatiquement (empilement sans trou, à partir d\'ici). Pour une grande quantité, indique simplement le nombre de palox : ça continue tout seul sur la colonne suivante, puis la ligne suivante si besoin.</p>'+
-        formEntree(celluleId, ligneId, position)+
+        addSectionHtml+
       '</div>';
     panel.classList.add('open');
     document.getElementById('overlayBg').classList.add('open');
@@ -531,6 +585,7 @@
   function closeDetail(){
     document.getElementById('detailPanel').classList.remove('open');
     document.getElementById('overlayBg').classList.remove('open');
+    refetchState();
   }
 
   function entreeRowHtml(idx){
@@ -1023,7 +1078,38 @@
     if(btn) renderTab(btn.dataset.tab);
   });
 
-  loadState();
+  document.getElementById('loginForm').addEventListener('submit', async (ev)=>{
+    ev.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const msg = document.getElementById('loginMsg');
+    msg.textContent = '';
+    try{
+      await auth.signInWithEmailAndPassword(email, password);
+    }catch(e){
+      msg.textContent = 'Connexion impossible : email ou mot de passe incorrect.';
+    }
+  });
+
+  auth.onAuthStateChanged(async (user)=>{
+    if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+    if(user){
+      try{
+        const roleDoc = await db.collection('users').doc(user.uid).get();
+        currentRole = (roleDoc.exists && roleDoc.data().role==='editor') ? 'editor' : 'viewer';
+      }catch(e){ currentRole = 'viewer'; }
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('mainWrap').style.display = '';
+      loaded = false;
+      currentCelluleId = null; currentLigneId = null; currentTab = 'coupe';
+      attachSnapshotListener();
+    } else {
+      loaded = false;
+      document.getElementById('mainWrap').style.display = 'none';
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('loginPassword').value = '';
+    }
+  });
 })();
 </script>
 </body>
