@@ -110,7 +110,6 @@
   .detail-close{ position:absolute; top:12px; right:12px; background:var(--panel-2); border:none; font-size:20px; width:34px; height:34px; border-radius:50%; cursor:pointer; color:var(--ink-soft); }
   .detail-body{ padding: 14px 16px 30px; }
   .lot-card{ background:var(--panel-2); border-radius:8px; padding:13px; margin-bottom:10px; border-left: 5px solid var(--copper); transition: outline .15s ease; }
-  .lot-card.highlight{ outline: 2px solid var(--copper); outline-offset:2px; }
   .lot-card .lp-title{ font-weight:700; font-size:14px; margin-bottom:2px; }
   .lot-card .lp-meta{ font-size:12px; color:var(--ink-soft); margin-bottom:8px; }
   .lot-card .lp-meta span{ font-family:'IBM Plex Mono', monospace; }
@@ -167,6 +166,7 @@
   .role-badge.editor{ background: var(--green-soft); color: var(--green); }
   .role-badge.viewer{ background: var(--blue-soft); color: var(--blue); }
   .readonly-note{ background: var(--panel-2); border:1px dashed var(--line); border-radius:8px; padding:10px 12px; font-size:12.5px; color:var(--ink-soft); }
+  .filter-bar{ background: var(--copper-soft); border-radius:8px; padding:8px 12px; font-size:12.5px; color: var(--ink); margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
 </style>
 </head>
 <body>
@@ -422,8 +422,20 @@
   }
   function addTx(type, data){ state.transactions.unshift(Object.assign({ id: uid(), type, date: data.date || today() }, data)); }
   function totalPalox(){ return state.lots.length; }
+  const FIXED_PRODUCT_COLORS = [
+    { test: n=> n.includes('semis') && n.includes('echalote'), color: '#8E6BA8' },   // échalote de semis — mauve
+    { test: n=> n.includes('echalion'), color: '#3D6C96' },                          // échalion — bleu
+    { test: n=> n.includes('roscoff'), color: '#C97B94' },                           // oignon de roscoff — rose
+    { test: n=> n.includes('rouge'), color: '#A83232' },                             // oignon rouge — rouge
+    { test: n=> n.includes('jaune'), color: '#B8933A' },                             // oignon jaune — jaune
+    { test: n=> n.includes('echalote'), color: '#8C8577' }                           // échalote — gris
+  ];
+  function normalizeProduitKey(produit){
+    return (produit||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
   function colorForProduit(produit){
-    const key = (produit||'').trim().toLowerCase();
+    const key = normalizeProduitKey(produit);
+    for(let i=0;i<FIXED_PRODUCT_COLORS.length;i++){ if(FIXED_PRODUCT_COLORS[i].test(key)) return FIXED_PRODUCT_COLORS[i].color; }
     let h=0; for(let i=0;i<key.length;i++){ h = (h*31 + key.charCodeAt(i)) >>> 0; }
     return COLOR_PALETTE[h % COLOR_PALETTE.length];
   }
@@ -564,17 +576,24 @@
     '</div>';
   }
 
-  function openLigneDetail(celluleId, ligneId, highlightProduit){
-    const batches = batchesInLigne(celluleId, ligneId);
+  function openLigneDetail(celluleId, ligneId, filterProduit){
+    let batches = batchesInLigne(celluleId, ligneId);
+    if(filterProduit){
+      const norm = normalizeProduitKey(filterProduit);
+      batches = batches.filter(b => normalizeProduitKey(b.produit)===norm);
+    }
     const label = caseLabel(celluleId, ligneId);
     const l = getLigne(celluleId, ligneId);
     const occ = ligneOccupied(celluleId, ligneId);
 
     let lotsHtml = batches.length===0
-      ? '<p style="color:var(--ink-soft);font-size:13.5px;">Aucun palox ici pour le moment.</p>'
+      ? '<p style="color:var(--ink-soft);font-size:13.5px;">'+(filterProduit? 'Aucun palox de « '+escapeHtml(filterProduit)+' » ici pour le moment.' : 'Aucun palox ici pour le moment.')+'</p>'
       : batches.map(batchCardHtml).join('');
 
     entreeRowCounter = 0;
+
+    const filterBarHtml = filterProduit ?
+      '<div class="filter-bar">Filtré sur <b>'+escapeHtml(filterProduit)+'</b><button type="button" class="btn btn-ghost btn-sm" id="clearFilter">✕ Voir toute la ligne</button></div>' : '';
 
     const addSectionHtml = currentRole==='editor' ?
         '<div class="divider-label">Ajouter du stock ici</div>'+
@@ -586,6 +605,7 @@
     panel.innerHTML =
       '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>'+escapeHtml(label)+'</h3><p>'+occ+' / '+l.capacite+' palox · '+Math.round(lignePercent(celluleId,ligneId))+'% plein</p></div>'+
       '<div class="detail-body">'+
+        filterBarHtml+
         lotsHtml+
         addSectionHtml+
       '</div>';
@@ -593,16 +613,11 @@
     document.getElementById('overlayBg').classList.add('open');
     panel.dataset.mode = 'ligne';
     panel.dataset.cellule = celluleId; panel.dataset.ligne = ligneId;
+    panel.dataset.filterProduit = filterProduit || '';
     bindDetailEvents();
 
-    if(highlightProduit){
-      const target = panel.querySelector('.lot-card[data-produit="'+CSS.escape(highlightProduit.toLowerCase())+'"]');
-      if(target){
-        target.scrollIntoView({behavior:'smooth', block:'center'});
-        target.classList.add('highlight');
-        setTimeout(()=>target.classList.remove('highlight'), 1600);
-      }
-    }
+    const clearBtn = document.getElementById('clearFilter');
+    if(clearBtn) clearBtn.addEventListener('click', ()=> openLigneDetail(celluleId, ligneId));
   }
   function closeDetail(){
     document.getElementById('detailPanel').classList.remove('open');
@@ -726,7 +741,7 @@
 
         await saveState();
         renderHeaderStats();
-        openLigneDetail(celluleId, ligneId);
+        openLigneDetail(celluleId, ligneId, document.getElementById('detailPanel').dataset.filterProduit || undefined);
         if(placed>0 && skipped===0){
           const freshMsg = document.getElementById('entreeMsg');
           if(freshMsg){ freshMsg.textContent = '✓ '+placed+' entrée(s) enregistrée(s)'; freshMsg.className='msg ok'; }
@@ -790,13 +805,14 @@
           return;
         }
         if(isSameSpot){ msg.textContent = '✗ La destination est identique à la source'; msg.className='msg err'; return; }
+        const fromLabel = caseLabel(first.celluleId, first.ligneId);
         paloxs.forEach(p=>{ p.celluleId = destCelluleId; p.ligneId = destLigneId; });
         addTx('deplacement', { quantite: paloxs.length, poids: poidsTotal, produit: first.produit, lot: first.lot, date, commentaire: comment,
-          fromLabel: caseLabel(first.celluleId===destCelluleId && first.ligneId===destLigneId ? first.celluleId : first.celluleId, first.ligneId), toLabel: caseLabel(destCelluleId, destLigneId) });
+          fromLabel: fromLabel, toLabel: caseLabel(destCelluleId, destLigneId) });
       }
       await saveState();
       renderHeaderStats();
-      openLigneDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne);
+      openLigneDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne, document.getElementById('detailPanel').dataset.filterProduit || undefined);
       renderTab(currentTab);
     });
   }
