@@ -53,23 +53,27 @@
   .card h2{ font-family:'Fraunces', serif; font-weight: 600; font-size: 17px; margin: 0 0 4px; }
   .card .sub{ color: var(--ink-soft); font-size: 12.5px; margin: 0 0 14px; }
 
-  .cellule-tabs, .ligne-tabs{ display:flex; gap:6px; margin-bottom:12px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:2px; }
+  .cellule-tabs{ display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:2px; }
   .cellule-tabs button{ font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:600; padding:8px 12px; border-radius:7px; border:1.5px solid var(--line); background:#fff; color:var(--ink-soft); cursor:pointer; white-space:nowrap; flex-shrink:0; }
   .cellule-tabs button.active{ background: var(--copper); border-color: var(--copper); color:#fff; }
   .cellule-tabs button .n{ opacity:.75; font-weight:500; }
-  .ligne-tabs button{ font-family:'Inter', sans-serif; font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:6px; border:1.5px solid var(--line); background:#fff; color:var(--ink-soft); cursor:pointer; white-space:nowrap; flex-shrink:0; }
-  .ligne-tabs button.active{ background: var(--blue); border-color: var(--blue); color:#fff; }
 
-  .coupe-grid-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin: 0 -16px; padding: 0 16px; }
-  table.coupe{ border-collapse: separate; border-spacing: 4px; }
-  table.coupe th{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft); font-weight:600; text-align:center; padding-bottom:2px; }
-  table.coupe td.niveaulabel{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft); text-align:right; padding-right:6px; vertical-align:middle; white-space:nowrap; }
-  .coupe-cell{ width:64px; height:38px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:9.5px; font-weight:700; color:#fff; text-align:center; padding:2px 3px; line-height:1.15; position:relative; }
-  .coupe-cell.empty{ background:#EDE8DA; border:1.5px dashed var(--line); cursor:pointer; }
-  .coupe-cell.disabled{ background: repeating-linear-gradient(45deg, #E3DECF, #E3DECF 5px, #D8D2C0 5px, #D8D2C0 10px); cursor:default; opacity:.5; }
-  .coupe-cell:active{ outline: 2px solid var(--ink); outline-offset:1px; }
-  .coupe-legend{ display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; font-size:11.5px; color:var(--ink-soft); }
-  .coupe-legend .lg-swatch{ display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+  .stockage-toolbar{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+
+  .ligne-list{ display:flex; flex-direction:column; gap:10px; }
+  .ligne-list-item{ border:1px solid var(--line); border-radius:10px; padding:14px 16px; cursor:pointer; background:#fff; transition: border-color .15s ease; }
+  .ligne-list-item:hover{ border-color: var(--copper); }
+  .ligne-list-item .lli-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .ligne-list-item h3{ font-family:'Fraunces', serif; font-weight:600; font-size:15.5px; margin:0; }
+  .ligne-list-item .lli-count{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-soft); white-space:nowrap; }
+  .fill-track{ height:10px; border-radius:6px; background: var(--panel-2); overflow:hidden; }
+  .fill-fill{ height:100%; border-radius:6px; }
+  .fill-fill.low{ background: var(--green); }
+  .fill-fill.mid{ background: var(--copper); }
+  .fill-fill.high{ background: var(--warn); }
+  .lli-produits{ display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .produit-chip{ font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; color:#fff; }
+  .lli-empty{ font-size:12px; color:var(--ink-soft); margin-top:8px; font-style:italic; }
 
   .grid-form{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   .grid-form.wide-3{ grid-template-columns: repeat(3,1fr); }
@@ -100,7 +104,7 @@
 
   .overlay-bg{ display:none; position:fixed; inset:0; background: rgba(43,38,32,0.4); z-index:40; }
   .overlay-bg.open{ display:block; }
-  .detail-panel{ position:fixed; top:0; right:0; height:100vh; height:100dvh; width:min(520px, 100vw); background: var(--panel); box-shadow: -8px 0 30px rgba(0,0,0,0.15); z-index:41; transform: translateX(100%); transition: transform .2s ease; overflow-y:auto; }
+  .detail-panel{ position:fixed; top:0; right:0; height:100vh; height:100dvh; width:min(560px, 100vw); background: var(--panel); box-shadow: -8px 0 30px rgba(0,0,0,0.15); z-index:41; transform: translateX(100%); transition: transform .2s ease; overflow-y:auto; }
   .detail-panel.open{ transform: translateX(0); }
   .detail-header{ padding:16px 16px 12px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); z-index:2; }
   .detail-header h3{ font-family:'Fraunces', serif; font-size:17px; margin:0 0 3px; padding-right:30px; }
@@ -144,14 +148,8 @@
   .config-cellule .cfg-head input:focus{ outline:1.5px solid var(--copper); background:#fff; }
   .ligne-row{ display:flex; align-items:center; gap:8px; padding:8px 0; font-size:12.5px; flex-wrap:wrap; border-bottom:1px solid var(--line); }
   .ligne-row:last-of-type{ border-bottom:none; }
-  .ligne-row input[type=text]{ font-family:'Inter'; font-size:13px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; width:140px; }
-  .ligne-row input[type=number]{ font-family:'IBM Plex Mono'; font-size:12.5px; padding:6px 6px; border:1px solid var(--line); border-radius:6px; width:52px; }
-  .hpos-scroller{ display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:6px 2px 8px; width:100%; }
-  .hpos-item{ display:flex; flex-direction:column; align-items:center; gap:3px; flex-shrink:0; }
-  .hpos-item span{ font-size:9.5px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; }
-  .hpos-item input{ width:40px; font-family:'IBM Plex Mono'; font-size:12px; padding:5px 3px; border:1px solid var(--line); border-radius:5px; text-align:center; }
-  .bulk-hauteur{ display:flex; align-items:center; gap:6px; margin-top:6px; font-size:12px; color:var(--ink-soft); flex-wrap:wrap; }
-  .bulk-hauteur input{ width:48px; font-family:'IBM Plex Mono'; font-size:12px; padding:5px 6px; border:1px solid var(--line); border-radius:5px; }
+  .ligne-row input[type=text]{ font-family:'Inter'; font-size:13px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; width:160px; }
+  .ligne-row input[type=number]{ font-family:'IBM Plex Mono'; font-size:12.5px; padding:6px 6px; border:1px solid var(--line); border-radius:6px; width:70px; }
   .del-btn{ background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px; text-decoration:underline; flex-shrink:0; }
   .del-btn:hover{ color: var(--warn); }
   .loading{ text-align:center; padding:60px 0; color: var(--ink-soft); font-family:'Fraunces'; font-size:16px; }
@@ -204,14 +202,14 @@
       </svg>
       <div>
         <h1>Plan de stockage</h1>
-        <p>Partagé en temps réel · cellules, lignes, positions, niveaux</p>
+        <p>Partagé en temps réel · cellules et lignes</p>
       </div>
     </div>
     <div class="header-stats" id="headerStats"></div>
   </header>
 
   <nav class="tabs" id="tabs">
-    <button data-tab="coupe" class="active">Stockage</button>
+    <button data-tab="stockage" class="active">Stockage</button>
     <button data-tab="recherche">Recherche</button>
     <button data-tab="historique">Historique</button>
     <button data-tab="cellules" id="tabCellules">Cellules</button>
@@ -247,9 +245,8 @@
 
   let state = { cellules: [], lots: [], transactions: [] };
   let loaded = false;
-  let currentTab = 'coupe';
+  let currentTab = 'stockage';
   let currentCelluleId = null;
-  let currentLigneId = null;
   const COLOR_PALETTE = ['#A85C2E','#4E6647','#3E5C76','#8B5FBF','#B0793E','#5C7A6E','#7A4B4B','#5A6B8C','#946846','#3F7161'];
 
   function uid(){ return Math.random().toString(36).slice(2,9); }
@@ -263,7 +260,6 @@
     if(raw){ try{ state = JSON.parse(raw); }catch(e){ state = { cellules:[], lots:[], transactions:[] }; } }
     migrate();
     if(!currentCelluleId || !getCellule(currentCelluleId)) currentCelluleId = state.cellules[0] ? state.cellules[0].id : null;
-    if(!currentLigneId || (currentCelluleId && !getLigne(currentCelluleId, currentLigneId))) currentLigneId = currentCelluleId ? getCellule(currentCelluleId).lignes[0].id : null;
   }
   function attachSnapshotListener(){
     if(unsubscribeSnapshot) unsubscribeSnapshot();
@@ -290,7 +286,6 @@
       if(snap.exists){ applyIncomingState(snap.data().data); render(); }
     }catch(e){ console.error(e); }
   }
-  let saveChain = Promise.resolve();
   let saveStatusTimer = null;
   function setSaveStatus(status){
     const el = document.getElementById('saveStatus');
@@ -302,6 +297,7 @@
       const rb = document.getElementById('retrySaveBtn'); if(rb) rb.addEventListener('click', ()=>saveState());
     }
   }
+  let saveChain = Promise.resolve();
   function saveState(){
     saveChain = saveChain.then(()=>doSaveWithRetry(4));
     return saveChain;
@@ -358,82 +354,52 @@
   }
 
   function migrate(){
+    // Ancien modèle : ligne { positions, hauteurParPosition }, lot { position, hauteurDebut }.
+    // Nouveau modèle : ligne { capacite }, lot rattaché seulement à la ligne.
     state.cellules.forEach(c=>{
       c.lignes.forEach(l=>{
-        if(!l.hauteurParPosition){
-          const fallback = l.hauteurMax || 4;
-          l.hauteurParPosition = Array(l.positions).fill(fallback);
+        if(l.capacite==null){
+          if(Array.isArray(l.hauteurParPosition)) l.capacite = l.hauteurParPosition.reduce((a,b)=>a+b,0) || 50;
+          else l.capacite = 50;
         }
-        while(l.hauteurParPosition.length < l.positions) l.hauteurParPosition.push(l.hauteurParPosition[l.hauteurParPosition.length-1] || 4);
-        if(l.hauteurParPosition.length > l.positions) l.hauteurParPosition = l.hauteurParPosition.slice(0, l.positions);
+        delete l.positions; delete l.hauteurParPosition; delete l.hauteurMax;
       });
     });
-    const seen = {};
-    state.lots.forEach(l=>{
-      if(l.hauteurDebut) return;
-      const key = l.celluleId+'|'+l.ligneId+'|'+l.position;
-      const used = seen[key] || 0;
-      l.hauteurDebut = used + 1;
-      seen[key] = used + (l.nbPalox||1);
-    });
+    state.lots.forEach(l=>{ delete l.position; delete l.hauteurDebut; });
   }
 
   function seedDefault(){
-    function ligne(nom, positions, hauteurMax){ return { id: uid(), nom, positions, hauteurParPosition: Array(positions).fill(hauteurMax||4) }; }
+    function ligne(nom, capacite){ return { id: uid(), nom, capacite }; }
     function cellule(nom, lignes){ return { id: uid(), nom, lignes }; }
     state.cellules = [
-      cellule("Cellule 1", [ligne("Ligne 1",13,4), ligne("Ligne 2",13,4), ligne("Ligne 3",13,4)]),
-      cellule("Cellule 2", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
-      cellule("Cellule 3", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
-      cellule("Cellule 4 LBP", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
-      cellule("Cellule 5 LBP", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
-      cellule("Cellule 6 LBP", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
-      cellule("Cellule 7 LBP Colle Carotte", [ligne("Ligne Gauche",13,4), ligne("Ligne Milieu",13,4), ligne("Ligne Droite",13,4)]),
-      cellule("Frigo 8 Cocaign", [ligne("Casiers",28,5)])
+      cellule("Cellule 1", [ligne("Ligne 1",50), ligne("Ligne 2",50), ligne("Ligne 3",50)]),
+      cellule("Cellule 2", [ligne("Ligne Gauche",50), ligne("Ligne Milieu",50), ligne("Ligne Droite",50)]),
+      cellule("Cellule 3", [ligne("Ligne Gauche",50), ligne("Ligne Milieu",50), ligne("Ligne Droite",50)]),
+      cellule("Cellule 4 LBP", [ligne("Ligne Gauche",50), ligne("Ligne Milieu",50), ligne("Ligne Droite",50)]),
+      cellule("Cellule 5 LBP", [ligne("Ligne Gauche",50), ligne("Ligne Milieu",50), ligne("Ligne Droite",50)]),
+      cellule("Cellule 6 LBP", [ligne("Ligne Gauche",50), ligne("Ligne Milieu",50), ligne("Ligne Droite",50)]),
+      cellule("Cellule 7 LBP Colle Carotte", [ligne("Ligne Gauche",50), ligne("Ligne Milieu",50), ligne("Ligne Droite",50)]),
+      cellule("Frigo 8 Cocaign", [ligne("Casiers",140)])
     ];
   }
 
   function getCellule(id){ return state.cellules.find(c=>c.id===id); }
   function getLigne(celluleId, ligneId){ const c = getCellule(celluleId); return c ? c.lignes.find(l=>l.id===ligneId) : null; }
-  function getHauteurMax(celluleId, ligneId, position){
+  function lotsInLigne(celluleId, ligneId){ return state.lots.filter(l=>l.celluleId===celluleId && l.ligneId===ligneId); }
+  function ligneOccupied(celluleId, ligneId){ return lotsInLigne(celluleId, ligneId).reduce((s,l)=>s+l.nbPalox,0); }
+  function lignePercent(celluleId, ligneId){
     const l = getLigne(celluleId, ligneId);
-    if(!l) return 4;
-    return l.hauteurParPosition[position-1] != null ? l.hauteurParPosition[position-1] : 4;
+    if(!l || !l.capacite) return 0;
+    return (ligneOccupied(celluleId, ligneId) / l.capacite) * 100;
   }
-  function lotsInCase(celluleId, ligneId, position){ return state.lots.filter(l=>l.celluleId===celluleId && l.ligneId===ligneId && l.position===position); }
+  function fillClass(pct){ return pct>=95 ? 'high' : (pct>=70 ? 'mid' : 'low'); }
   function lotById(id){ return state.lots.find(l=>l.id===id); }
-  function lotHauteurFin(l){ return l.hauteurDebut + l.nbPalox - 1; }
-  function caseLabel(celluleId, ligneId, position){
+  function caseLabel(celluleId, ligneId){
     const c = getCellule(celluleId), l = getLigne(celluleId, ligneId);
-    return (c?c.nom:'?') + " — " + (l?l.nom:'?') + ", Position " + position;
+    return (c?c.nom:'?') + " — " + (l?l.nom:'?');
   }
   function addTx(type, data){ state.transactions.unshift(Object.assign({ id: uid(), type, date: data.date || today() }, data)); }
   function totalPalox(){ return state.lots.reduce((s,l)=>s+l.nbPalox,0); }
-
-  function rangesOverlap(aS,aE,bS,bE){ return aS<=bE && bS<=aE; }
-  function occupiedRanges(celluleId,ligneId,position, excludeLotId){
-    return lotsInCase(celluleId,ligneId,position)
-      .filter(l=> l.id!==excludeLotId)
-      .map(l=>({ start: l.hauteurDebut, end: lotHauteurFin(l), lot: l }))
-      .sort((a,b)=>a.start-b.start);
-  }
-  function nextFreeStartFromRanges(ranges, count, hauteurMax){
-    for(let start=1; start+count-1<=hauteurMax; start++){
-      const end = start+count-1;
-      if(!ranges.some(r=>rangesOverlap(start,end,r.start,r.end))) return start;
-    }
-    return null;
-  }
-  function nextFreeStart(celluleId,ligneId,position,count,hauteurMax){
-    return nextFreeStartFromRanges(occupiedRanges(celluleId,ligneId,position), count, hauteurMax);
-  }
-  function validateRange(celluleId,ligneId,position,hauteurDebut,count,hauteurMax,excludeLotId){
-    const end = hauteurDebut+count-1;
-    if(hauteurDebut<1 || !Number.isFinite(end) || end>hauteurMax) return { ok:false, reason:'depasse' };
-    const ranges = occupiedRanges(celluleId,ligneId,position,excludeLotId);
-    if(ranges.some(r=>rangesOverlap(hauteurDebut,end,r.start,r.end))) return { ok:false, reason:'chevauche' };
-    return { ok:true };
-  }
   function colorForProduit(produit){
     const key = (produit||'').trim().toLowerCase();
     let h=0; for(let i=0;i<key.length;i++){ h = (h*31 + key.charCodeAt(i)) >>> 0; }
@@ -457,71 +423,57 @@
     if(tabCellules) tabCellules.style.display = currentRole==='editor' ? '' : 'none';
   }
   function renderTab(tab){
-    if(tab==='cellules' && currentRole!=='editor') tab = 'coupe';
+    if(tab==='cellules' && currentRole!=='editor') tab = 'stockage';
     currentTab = tab;
     document.querySelectorAll('nav.tabs button').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
     const app = document.getElementById('app');
-    if(tab==='coupe') app.innerHTML = viewCoupe();
+    if(tab==='stockage') app.innerHTML = viewStockage();
     if(tab==='recherche') app.innerHTML = viewRecherche();
     if(tab==='historique') app.innerHTML = viewHistorique();
     if(tab==='cellules') app.innerHTML = viewCellules();
     bindTabEvents(tab);
   }
 
-  function viewCoupe(){
+  function viewStockage(){
     if(state.cellules.length===0){
       return '<div class="card">'+emptyState("Aucune cellule configurée", currentRole==='editor' ? "Crée une cellule dans l'onglet « Cellules » pour commencer." : "Aucune donnée pour le moment — contacte un compte de gestion.")+'</div>';
     }
     if(!currentCelluleId || !getCellule(currentCelluleId)) currentCelluleId = state.cellules[0].id;
     const c = getCellule(currentCelluleId);
-    if(!currentLigneId || !getLigne(c.id, currentLigneId)) currentLigneId = c.lignes[0].id;
-    const l = getLigne(c.id, currentLigneId);
 
     const celluleTabsHtml = state.cellules.map(cc=>{
       const n = state.lots.filter(x=>x.celluleId===cc.id).reduce((s,x)=>s+x.nbPalox,0);
       return '<button data-cellule="'+cc.id+'" class="'+(cc.id===c.id?'active':'')+'">'+escapeHtml(cc.nom)+' <span class="n">('+fmt(n)+')</span></button>';
     }).join('');
-    const ligneTabsHtml = c.lignes.map(ll=>'<button data-ligne="'+ll.id+'" class="'+(ll.id===l.id?'active':'')+'">'+escapeHtml(ll.nom)+'</button>').join('');
 
-    const maxHauteur = Math.max(...l.hauteurParPosition, 1);
-    let thead = '<tr><th></th>';
-    for(let p=1; p<=l.positions; p++) thead += '<th>P'+p+'</th>';
-    thead += '</tr>';
+    const toolbar = currentRole==='editor' ?
+      '<div class="stockage-toolbar">'+
+        '<button class="btn btn-green btn-sm" data-bulk="entree">+ Entrée groupée</button>'+
+        '<button class="btn btn-blue btn-sm" data-bulk="deplacement">↔ Déplacement groupé</button>'+
+        '<button class="btn btn-warn btn-sm" data-bulk="sortie">→ Sortie groupée</button>'+
+      '</div>' : '';
 
-    let rows = '';
-    const produitsSeen = {};
-    for(let h=maxHauteur; h>=1; h--){
-      rows += '<tr><td class="niveaulabel">Niv. '+h+'</td>';
-      for(let p=1; p<=l.positions; p++){
-        const hMaxHere = l.hauteurParPosition[p-1];
-        if(h > hMaxHere){
-          rows += '<td><div class="coupe-cell disabled"></div></td>';
-          continue;
-        }
-        const lots = lotsInCase(c.id, l.id, p);
-        const occ = lots.find(x => h>=x.hauteurDebut && h<=lotHauteurFin(x));
-        if(occ){
-          produitsSeen[(occ.produit||'').trim().toLowerCase()] = occ.produit;
-          const shortName = (occ.produit||'').slice(0,9);
-          rows += '<td><div class="coupe-cell" style="background:'+colorForLot(occ)+'" data-lot="'+occ.id+'">'+escapeHtml(shortName)+'</div></td>';
-        } else {
-          rows += '<td><div class="coupe-cell empty" data-case="'+c.id+'|'+l.id+'|'+p+'" data-hauteur="'+h+'"></div></td>';
-        }
-      }
-      rows += '</tr>';
-    }
-    rows += '<tr><td class="niveaulabel">Sol</td>' + Array(l.positions).fill('<td></td>').join('') + '</tr>';
+    const lignesHtml = c.lignes.map(l=>{
+      const occ = ligneOccupied(c.id, l.id);
+      const pct = lignePercent(c.id, l.id);
+      const lots = lotsInLigne(c.id, l.id);
+      const seen = {};
+      lots.forEach(x=>{ seen[(x.produit||'').trim().toLowerCase()] = x.produit; });
+      const chips = Object.keys(seen).length ?
+        '<div class="lli-produits">'+Object.keys(seen).map(k=>'<span class="produit-chip" style="background:'+colorForProduit(seen[k])+'">'+escapeHtml(seen[k])+'</span>').join('')+'</div>' :
+        '<div class="lli-empty">Vide</div>';
+      return '<div class="ligne-list-item" data-cellule="'+c.id+'" data-ligne="'+l.id+'">'+
+        '<div class="lli-head"><h3>'+escapeHtml(l.nom)+'</h3><span class="lli-count">'+fmt(occ)+' / '+fmt(l.capacite)+' palox · '+Math.round(pct)+'%</span></div>'+
+        '<div class="fill-track"><div class="fill-fill '+fillClass(pct)+'" style="width:'+Math.min(100,pct)+'%"></div></div>'+
+        chips+
+      '</div>';
+    }).join('');
 
-    const legend = Object.keys(produitsSeen).length ? ('<div class="coupe-legend">'+Object.keys(produitsSeen).map(key=>{
-      return '<span><span class="lg-swatch" style="background:'+colorForProduit(produitsSeen[key])+'"></span>'+escapeHtml(produitsSeen[key])+'</span>';
-    }).join('')+'</div>') : '';
-
-    return '<div class="cellule-tabs" id="coupeCelluleTabs">'+celluleTabsHtml+'</div>'+
-      '<div class="ligne-tabs" id="coupeLigneTabs">'+ligneTabsHtml+'</div>'+
-      '<div class="card"><h2>'+escapeHtml(c.nom)+' — '+escapeHtml(l.nom)+'</h2>'+
-      '<p class="sub">Vue en coupe : chaque colonne est une position, chaque ligne un niveau d\'empilement (du sol vers le haut). Touche une case pour voir ou modifier son contenu.</p>'+
-      '<div class="coupe-grid-wrap"><table class="coupe"><thead>'+thead+'</thead><tbody>'+rows+'</tbody></table></div>'+
-      legend+
+    return '<div class="cellule-tabs" id="stockageCelluleTabs">'+celluleTabsHtml+'</div>'+
+      toolbar+
+      '<div class="card"><h2>'+escapeHtml(c.nom)+'</h2>'+
+      '<p class="sub">Une ligne = une file de stockage. Touche une ligne pour voir son détail ou la modifier.</p>'+
+      '<div class="ligne-list">'+lignesHtml+'</div>'+
       '</div>';
   }
 
@@ -530,34 +482,35 @@
       '<div style="font-family:\'Fraunces\';font-size:15px;color:var(--ink);margin-bottom:4px;">'+title+'</div><div style="font-size:13px;">'+sub+'</div></div>';
   }
 
-  // ---------- DETAIL PANEL ----------
+  // ---------- DETAIL PANEL (une ligne) ----------
   let entreeRowCounter = 0;
 
-  function openCaseDetail(celluleId, ligneId, position){
-    const lots = lotsInCase(celluleId, ligneId, position).sort((a,b)=>a.hauteurDebut-b.hauteurDebut);
-    const label = caseLabel(celluleId, ligneId, position);
-    const hMax = getHauteurMax(celluleId, ligneId, position);
+  function openLigneDetail(celluleId, ligneId){
+    const lots = lotsInLigne(celluleId, ligneId);
+    const label = caseLabel(celluleId, ligneId);
+    const l = getLigne(celluleId, ligneId);
+    const occ = ligneOccupied(celluleId, ligneId);
 
     let lotsHtml = lots.length===0
       ? '<p style="color:var(--ink-soft);font-size:13.5px;">Aucun palox ici pour le moment.</p>'
-      : lots.map(l=>{
-          const poidsStr = l.poids!=null ? (fmt(l.poids)+' kg') : 'poids inconnu';
-          return '<div class="lot-card" style="border-left-color:'+colorForLot(l)+'" data-lot="'+l.id+'">'+
-            '<div class="lp-title">'+escapeHtml(l.produit)+'</div>'+
-            '<div class="lp-meta">Lot <span>'+escapeHtml(l.lot||'—')+'</span>'+
-              (l.parcelle? ' · Parcelle <span>'+escapeHtml(l.parcelle)+'</span>':'')+
-              (l.calibre? ' · Calibre <span>'+escapeHtml(l.calibre)+'</span>':'')+
-              (l.traitement? ' · '+escapeHtml(l.traitement):'')+
-              '<br>Niveaux <span>'+l.hauteurDebut+'-'+lotHauteurFin(l)+'</span> · '+fmt(l.nbPalox)+' palox · '+poidsStr+' · entré le '+fmtDate(l.dateEntree)+
-              (l.commentaire? '<br>« '+escapeHtml(l.commentaire)+' »':'')+
+      : lots.map(lot=>{
+          const poidsStr = lot.poids!=null ? (fmt(lot.poids)+' kg') : 'poids inconnu';
+          return '<div class="lot-card" style="border-left-color:'+colorForLot(lot)+'" data-lot="'+lot.id+'">'+
+            '<div class="lp-title">'+escapeHtml(lot.produit)+'</div>'+
+            '<div class="lp-meta">Lot <span>'+escapeHtml(lot.lot||'—')+'</span>'+
+              (lot.parcelle? ' · Parcelle <span>'+escapeHtml(lot.parcelle)+'</span>':'')+
+              (lot.calibre? ' · Calibre <span>'+escapeHtml(lot.calibre)+'</span>':'')+
+              (lot.traitement? ' · '+escapeHtml(lot.traitement):'')+
+              '<br>'+fmt(lot.nbPalox)+' palox · '+poidsStr+' · entré le '+fmtDate(lot.dateEntree)+
+              (lot.commentaire? '<br>« '+escapeHtml(lot.commentaire)+' »':'')+
             '</div>'+
             (currentRole==='editor' ? (
             '<div class="lot-actions">'+
-              '<button class="btn btn-sm btn-warn" data-act="sortie" data-lot="'+l.id+'">Sortie</button>'+
-              '<button class="btn btn-sm btn-blue" data-act="deplacer" data-lot="'+l.id+'">Déplacer</button>'+
+              '<button class="btn btn-sm btn-warn" data-act="sortie" data-lot="'+lot.id+'">Sortie</button>'+
+              '<button class="btn btn-sm btn-blue" data-act="deplacer" data-lot="'+lot.id+'">Déplacer</button>'+
             '</div>'+
-            '<div class="inline-form" id="form-sortie-'+l.id+'">'+formSortie(l)+'</div>'+
-            '<div class="inline-form" id="form-deplacer-'+l.id+'">'+formDeplacer(l)+'</div>'
+            '<div class="inline-form" id="form-sortie-'+lot.id+'">'+formSortie(lot)+'</div>'+
+            '<div class="inline-form" id="form-deplacer-'+lot.id+'">'+formDeplacer(lot)+'</div>'
             ) : '')+
           '</div>';
         }).join('');
@@ -565,21 +518,22 @@
     entreeRowCounter = 0;
 
     const addSectionHtml = currentRole==='editor' ?
-        '<div class="divider-label">Ajouter un ou plusieurs palox ici</div>'+
-        '<p style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">Le niveau est toujours calculé automatiquement (empilement sans trou, à partir d\'ici). Pour une grande quantité, indique simplement le nombre de palox : ça continue tout seul sur la colonne suivante, puis la ligne suivante si besoin.</p>'+
-        formEntree(celluleId, ligneId, position)
-      : '<div class="readonly-note">Consultation seule — contacte un compte de gestion pour modifier cet emplacement.</div>';
+        '<div class="divider-label">Ajouter du stock ici</div>'+
+        '<p style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">'+fmt(l.capacite-occ)+' palox restants dans cette ligne. Pour répartir une entrée sur plusieurs lignes en une fois, utilise « Entrée groupée » dans l\'onglet Stockage.</p>'+
+        formEntreeLigne(celluleId, ligneId)
+      : '<div class="readonly-note">Consultation seule — contacte un compte de gestion pour modifier cette ligne.</div>';
 
     const panel = document.getElementById('detailPanel');
     panel.innerHTML =
-      '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>Emplacement</h3><p>'+escapeHtml(label)+' · max '+hMax+' niveaux ici</p></div>'+
+      '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>'+escapeHtml(label)+'</h3><p>'+fmt(occ)+' / '+fmt(l.capacite)+' palox · '+Math.round(lignePercent(celluleId,ligneId))+'% plein</p></div>'+
       '<div class="detail-body">'+
         lotsHtml+
         addSectionHtml+
       '</div>';
     panel.classList.add('open');
     document.getElementById('overlayBg').classList.add('open');
-    panel.dataset.cellule = celluleId; panel.dataset.ligne = ligneId; panel.dataset.position = position;
+    panel.dataset.mode = 'ligne';
+    panel.dataset.cellule = celluleId; panel.dataset.ligne = ligneId;
     bindDetailEvents();
   }
   function closeDetail(){
@@ -596,45 +550,21 @@
         '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
         '<label class="field">Calibre<input type="text" data-f="calibre" placeholder="30/40"></label>'+
         '<label class="field">Traitement<input type="text" data-f="traitement" placeholder="TRESSE, RDF, BIO…"></label>'+
-        '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required><span class="hint">Empile automatiquement, sans trou — puis colonne/ligne suivante si besoin</span></label>'+
+        '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required></label>'+
         '<label class="field">Poids (kg) — optionnel<input type="number" min="0" step="0.01" data-f="poids"></label>'+
         '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" placeholder="observations…"></label>'+
       '</div>'+
-      (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer ce palox de la saisie</button>' : '')+
+      (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer cette ligne de saisie</button>' : '')+
     '</div>';
   }
-  function maxOccupiedHauteur(celluleId,ligneId,position){
-    const ranges = occupiedRanges(celluleId,ligneId,position);
-    return ranges.length ? Math.max(...ranges.map(r=>r.end)) : 0;
-  }
-  function planAutoFill(celluleId, ligneId, startPosition, totalCaisses){
-    const cellule = getCellule(celluleId);
-    const startIdx = cellule.lignes.findIndex(l=>l.id===ligneId);
-    const order = cellule.lignes.slice(startIdx).concat(cellule.lignes.slice(0, startIdx));
-    let remaining = totalCaisses;
-    const segments = [];
-    order.forEach((ligneObj, idx)=>{
-      const posStart = (idx===0) ? startPosition : 1;
-      for(let p=posStart; p<=ligneObj.positions && remaining>0; p++){
-        const hMaxHere = ligneObj.hauteurParPosition[p-1];
-        const used = maxOccupiedHauteur(celluleId, ligneObj.id, p);
-        const free = hMaxHere - used;
-        if(free<=0) continue;
-        const place = Math.min(free, remaining);
-        segments.push({ celluleId, ligneId: ligneObj.id, position: p, hauteurDebut: used+1, nbPalox: place });
-        remaining -= place;
-      }
-    });
-    return { segments, remaining };
-  }
-  function formEntree(celluleId, ligneId, position){
-    return '<form id="formEntree" data-cellule="'+celluleId+'" data-ligne="'+ligneId+'" data-position="'+position+'">'+
+  function formEntreeLigne(celluleId, ligneId){
+    return '<form id="formEntree" data-cellule="'+celluleId+'" data-ligne="'+ligneId+'">'+
       '<div id="entreeRows">'+entreeRowHtml(0)+'</div>'+
-      '<button type="button" class="btn btn-ghost btn-sm" id="addEntreeRow" style="margin-top:4px;">+ Ajouter un autre palox ici</button>'+
+      '<button type="button" class="btn btn-ghost btn-sm" id="addEntreeRow" style="margin-top:4px;">+ Ajouter un autre produit ici</button>'+
       '<div class="grid-form two" style="margin-top:12px;">'+
         '<label class="field">Date<input type="date" name="entreeDate" value="'+today()+'" required></label>'+
       '</div>'+
-      '<div class="btn-row"><button class="btn btn-green" type="submit">Enregistrer ce(s) palox</button><span class="msg" id="entreeMsg"></span></div>'+
+      '<div class="btn-row"><button class="btn btn-green" type="submit">Enregistrer</button><span class="msg" id="entreeMsg"></span></div>'+
     '</form>';
   }
   function formSortie(l){
@@ -655,8 +585,6 @@
         '<label class="field">Nb de palox (max '+fmt(l.nbPalox)+')<input type="number" min="1" max="'+l.nbPalox+'" step="1" value="'+l.nbPalox+'" data-f="d-qty" data-lot="'+l.id+'"></label>'+
         '<label class="field">Cellule destination<select data-f="d-cellule" data-lot="'+l.id+'">'+celluleOpts+'</select></label>'+
         '<label class="field">Ligne destination<select data-f="d-ligne" data-lot="'+l.id+'">'+ligneOpts+'</select></label>'+
-        '<label class="field">Position destination<input type="number" min="1" value="'+l.position+'" data-f="d-position" data-lot="'+l.id+'"></label>'+
-        '<label class="field">Niveau destination<input type="text" value="calculé automatiquement" disabled style="color:var(--ink-soft);background:var(--panel-2);" data-f-display="d-hauteur-display"><span class="hint" data-f="d-hauteur-hint"></span></label>'+
         '<label class="field">Poids déplacé (kg) — optionnel<input type="number" min="0" step="0.01" data-f="d-poids"></label>'+
         '<label class="field">Date<input type="date" value="'+today()+'" data-f="d-date"></label>'+
         '<label class="field span-full">Commentaire<input type="text" placeholder="raison du déplacement…" data-f="d-comment"></label>'+
@@ -665,20 +593,8 @@
       '<button class="btn btn-ghost btn-sm" data-cancel="deplacer" data-lot="'+l.id+'">Annuler</button><span class="msg" id="msg-deplacer-'+l.id+'"></span></div>';
   }
 
-  function refreshSuggestedHauteurDestination(box){
-    const l = lotById(box.querySelector('[data-f="d-qty"]').dataset.lot);
-    const destCelluleId = box.querySelector('[data-f="d-cellule"]').value;
-    const destLigneId = box.querySelector('[data-f="d-ligne"]').value;
-    const destPosition = parseInt(box.querySelector('[data-f="d-position"]').value) || 1;
-    const qty = parseFloat(box.querySelector('[data-f="d-qty"]').value) || 1;
-    const hMax = getHauteurMax(destCelluleId, destLigneId, destPosition);
-    const suggestion = nextFreeStart(destCelluleId, destLigneId, destPosition, qty, hMax);
-    const hint = box.querySelector('[data-f="d-hauteur-hint"]');
-    if(hint) hint.textContent = suggestion ? ('niveaux '+suggestion+'-'+(suggestion+qty-1)) : 'ne rentre pas ici — choisis une autre position';
-  }
-
-  function collectPendingRowInputs(){
-    return Array.from(document.querySelectorAll('.entree-row')).map(row=>{
+  function collectPendingRowInputs(container){
+    return Array.from(container.querySelectorAll('.entree-row')).map(row=>{
       const get = (f)=> row.querySelector('[data-f="'+f+'"]').value;
       return {
         produit: get('produit').trim(), lot: get('lot').trim(), parcelle: get('parcelle').trim(),
@@ -694,7 +610,7 @@
 
     const fe = document.getElementById('formEntree');
     if(fe){
-      const celluleId = fe.dataset.cellule, ligneId = fe.dataset.ligne, position = parseInt(fe.dataset.position);
+      const celluleId = fe.dataset.cellule, ligneId = fe.dataset.ligne;
 
       document.getElementById('addEntreeRow').addEventListener('click', ()=>{
         entreeRowCounter++;
@@ -709,63 +625,42 @@
       fe.addEventListener('submit', async (ev)=>{
         ev.preventDefault();
         const dateVal = fe.querySelector('[name="entreeDate"]').value;
-        const rows = collectPendingRowInputs();
+        const rows = collectPendingRowInputs(fe);
         const msg = document.getElementById('entreeMsg');
-
-        for(let i=0;i<rows.length;i++){
-          if(!rows[i].produit){ msg.textContent = '✗ Palox #'+(i+1)+' : le produit est obligatoire'; msg.className='msg err'; return; }
-          if(!rows[i].nbPalox || rows[i].nbPalox<1){ msg.textContent = '✗ Palox #'+(i+1)+' : quantité invalide'; msg.className='msg err'; return; }
-        }
-
-        // curseur qui avance au fil des lignes de saisie : chaque lot commence ou l'empilement precedent s'est arrete
-        let cursorLigneId = ligneId, cursorPosition = position;
-        let totalPlaced = 0, totalRequested = 0;
-        let anyLeftover = false;
+        const ligneObj = getLigne(celluleId, ligneId);
+        let used = ligneOccupied(celluleId, ligneId);
+        let placed = 0, skipped = 0;
 
         for(let i=0;i<rows.length;i++){
           const row = rows[i];
-          totalRequested += row.nbPalox;
-          const plan = planAutoFill(celluleId, cursorLigneId, cursorPosition, row.nbPalox);
-          if(plan.segments.length===0){
-            msg.textContent = '⚠ Palox #'+(i+1)+' : plus de place disponible à partir de cet emplacement — '+row.nbPalox+' palox non placés';
+          if(!row.produit){ skipped++; continue; }
+          if(!row.nbPalox || row.nbPalox<1){ skipped++; continue; }
+          if(used + row.nbPalox > ligneObj.capacite){
+            msg.textContent = '⚠ « '+row.produit+' » ne rentre pas ('+fmt(ligneObj.capacite-used)+' palox restants) — ligne ignorée';
             msg.className = 'msg err';
-            anyLeftover = true;
-            break;
+            skipped++; continue;
           }
-          const poidsParCaisse = row.poidsRaw ? parseFloat(row.poidsRaw)/row.nbPalox : null;
-          plan.segments.forEach(seg=>{
-            const newLot = {
-              id: uid(), celluleId: seg.celluleId, ligneId: seg.ligneId, position: seg.position, hauteurDebut: seg.hauteurDebut,
-              produit: row.produit, lot: row.lot, parcelle: row.parcelle, calibre: row.calibre, traitement: row.traitement,
-              nbPalox: seg.nbPalox, poids: poidsParCaisse!=null ? Math.round(poidsParCaisse*seg.nbPalox*100)/100 : null,
-              dateEntree: dateVal, commentaire: row.commentaire
-            };
-            state.lots.push(newLot);
-            addTx('entree', { quantite: newLot.nbPalox, poids: newLot.poids, produit: row.produit, lot: row.lot, date: dateVal, commentaire: row.commentaire, label: caseLabel(seg.celluleId,seg.ligneId,seg.position)+' (niveaux '+seg.hauteurDebut+'-'+lotHauteurFin(newLot)+')' });
-            totalPlaced += seg.nbPalox;
-          });
-          if(plan.remaining>0){
-            msg.textContent = '⚠ Palox #'+(i+1)+' : '+plan.remaining+' palox n\'ont pas trouvé de place (cellule pleine à partir d\'ici)';
-            msg.className = 'msg err';
-            anyLeftover = true;
-            break;
-          }
-          // le prochain palox de la saisie continue a partir de la derniere colonne remplie
-          const lastSeg = plan.segments[plan.segments.length-1];
-          cursorLigneId = lastSeg.ligneId; cursorPosition = lastSeg.position;
+          const newLot = {
+            id: uid(), celluleId, ligneId, produit: row.produit, lot: row.lot, parcelle: row.parcelle,
+            calibre: row.calibre, traitement: row.traitement, nbPalox: row.nbPalox,
+            poids: row.poidsRaw ? parseFloat(row.poidsRaw) : null, dateEntree: dateVal, commentaire: row.commentaire
+          };
+          state.lots.push(newLot);
+          addTx('entree', { quantite: newLot.nbPalox, poids: newLot.poids, produit: row.produit, lot: row.lot, date: dateVal, commentaire: row.commentaire, label: caseLabel(celluleId,ligneId) });
+          used += row.nbPalox;
+          placed++;
         }
 
         await saveState();
         renderHeaderStats();
-        openCaseDetail(celluleId, ligneId, position);
-        if(!anyLeftover){
+        openLigneDetail(celluleId, ligneId);
+        if(placed>0 && skipped===0){
           const freshMsg = document.getElementById('entreeMsg');
-          if(freshMsg){ freshMsg.textContent = '✓ '+totalPlaced+' palox enregistré(s), empilés automatiquement'; freshMsg.className='msg ok'; }
+          if(freshMsg){ freshMsg.textContent = '✓ '+placed+' entrée(s) enregistrée(s)'; freshMsg.className='msg ok'; }
         }
         renderTab(currentTab);
       });
     }
-
 
     document.querySelectorAll('[data-act]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
@@ -790,12 +685,12 @@
         const comment = box.querySelector('[data-f="s-comment"]').value;
         const msg = document.getElementById('msg-sortie-'+id);
         if(qty > l.nbPalox){ msg.textContent = '✗ Quantité supérieure au stock disponible'; msg.className='msg err'; return; }
-        addTx('sortie', { quantite: qty, poids: poids, produit: l.produit, lot: l.lot, date, commentaire: comment, label: caseLabel(l.celluleId,l.ligneId,l.position) });
+        addTx('sortie', { quantite: qty, poids: poids, produit: l.produit, lot: l.lot, date, commentaire: comment, label: caseLabel(l.celluleId,l.ligneId) });
         if(qty >= l.nbPalox){ state.lots = state.lots.filter(x=>x.id!==id); }
         else{ l.nbPalox -= qty; if(poids!=null && l.poids!=null) l.poids = Math.max(0, l.poids - poids); }
         await saveState();
         renderHeaderStats();
-        openCaseDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne, parseInt(document.getElementById('detailPanel').dataset.position));
+        openLigneDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne);
         renderTab(currentTab);
       });
     });
@@ -806,11 +701,7 @@
         const box = sel.closest('.inline-form');
         const ligneSel = box.querySelector('[data-f="d-ligne"]');
         ligneSel.innerHTML = c.lignes.map(x=>'<option value="'+x.id+'">'+escapeHtml(x.nom)+'</option>').join('');
-        refreshSuggestedHauteurDestination(box);
       });
-    });
-    document.querySelectorAll('[data-f="d-ligne"], [data-f="d-position"], [data-f="d-qty"]').forEach(inp=>{
-      inp.addEventListener('change', ()=>{ refreshSuggestedHauteurDestination(inp.closest('.inline-form')); });
     });
 
     document.querySelectorAll('[data-confirm="deplacer"]').forEach(btn=>{
@@ -820,7 +711,6 @@
         const qty = parseFloat(box.querySelector('[data-f="d-qty"]').value);
         const destCelluleId = box.querySelector('[data-f="d-cellule"]').value;
         const destLigneId = box.querySelector('[data-f="d-ligne"]').value;
-        const destPosition = parseInt(box.querySelector('[data-f="d-position"]').value);
         const poidsRaw = box.querySelector('[data-f="d-poids"]').value;
         const poids = poidsRaw? parseFloat(poidsRaw): null;
         const date = box.querySelector('[data-f="d-date"]').value;
@@ -828,27 +718,251 @@
         const msg = document.getElementById('msg-deplacer-'+id);
         if(qty > l.nbPalox){ msg.textContent = '✗ Quantité supérieure au stock disponible'; msg.className='msg err'; return; }
         const destLigneObj = getLigne(destCelluleId, destLigneId);
-        if(!destLigneObj || destPosition < 1 || destPosition > destLigneObj.positions){ msg.textContent = '✗ Position invalide pour cette ligne'; msg.className='msg err'; return; }
-        const destHMax = getHauteurMax(destCelluleId, destLigneId, destPosition);
-        const isSameSpot = destCelluleId===l.celluleId && destLigneId===l.ligneId && destPosition===l.position;
-        // le niveau est toujours calcule automatiquement (empilement sans trou) : jamais choisi a la main
-        const destRanges = occupiedRanges(destCelluleId, destLigneId, destPosition, isSameSpot? l.id : null);
-        const destHauteur = nextFreeStartFromRanges(destRanges, qty, destHMax);
-        if(!destHauteur){ msg.textContent = '✗ Ne rentre pas à destination (hauteur max '+destHMax+' niveaux) — choisis une autre position'; msg.className='msg err'; return; }
-        if(isSameSpot && destHauteur===l.hauteurDebut && qty===l.nbPalox){ msg.textContent = '✗ La destination est identique à la source'; msg.className='msg err'; return; }
+        if(!destLigneObj){ msg.textContent = '✗ Ligne de destination invalide'; msg.className='msg err'; return; }
+        const isSameSpot = destCelluleId===l.celluleId && destLigneId===l.ligneId;
+        const destOccupied = ligneOccupied(destCelluleId, destLigneId) - (isSameSpot ? l.nbPalox : 0);
+        if(destOccupied + qty > destLigneObj.capacite){ msg.textContent = '✗ Ne rentre pas à destination ('+fmt(destLigneObj.capacite-destOccupied)+' palox restants)'; msg.className='msg err'; return; }
+        if(isSameSpot && qty===l.nbPalox){ msg.textContent = '✗ La destination est identique à la source'; msg.className='msg err'; return; }
 
-        const dest = Object.assign({}, l, { id: uid(), celluleId: destCelluleId, ligneId: destLigneId, position: destPosition, hauteurDebut: destHauteur, nbPalox: qty, poids: poids });
+        const dest = Object.assign({}, l, { id: uid(), celluleId: destCelluleId, ligneId: destLigneId, nbPalox: qty, poids: poids });
         state.lots.push(dest);
         if(qty >= l.nbPalox){ state.lots = state.lots.filter(x=>x.id!==l.id); }
         else{ l.nbPalox -= qty; if(poids!=null && l.poids!=null) l.poids = Math.max(0, l.poids - poids); }
 
         addTx('deplacement', { quantite: qty, poids: poids, produit: l.produit, lot: l.lot, date, commentaire: comment,
-          fromLabel: caseLabel(l.celluleId,l.ligneId,l.position), toLabel: caseLabel(destCelluleId,destLigneId,destPosition)+' (niveaux '+destHauteur+'-'+(destHauteur+qty-1)+')' });
+          fromLabel: caseLabel(l.celluleId,l.ligneId), toLabel: caseLabel(destCelluleId,destLigneId) });
         await saveState();
         renderHeaderStats();
-        openCaseDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne, parseInt(document.getElementById('detailPanel').dataset.position));
+        openLigneDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne);
         renderTab(currentTab);
       });
+    });
+  }
+
+  // ---------- SAISIE GROUPÉE (plusieurs lignes à la fois) ----------
+  function ligneOptionsHtml(celluleId, selectedLigneId){
+    const c = getCellule(celluleId);
+    if(!c) return '';
+    return c.lignes.map(l=>'<option value="'+l.id+'" '+(l.id===selectedLigneId?'selected':'')+'>'+escapeHtml(l.nom)+'</option>').join('');
+  }
+  function celluleOptionsHtml(selectedCelluleId){
+    return state.cellules.map(c=>'<option value="'+c.id+'" '+(c.id===selectedCelluleId?'selected':'')+'>'+escapeHtml(c.nom)+'</option>').join('');
+  }
+  function lotOptionsHtml(celluleId, ligneId){
+    const lots = lotsInLigne(celluleId, ligneId);
+    if(lots.length===0) return '<option value="">— Aucun stock dans cette ligne —</option>';
+    return '<option value="">— Choisir un produit —</option>'+lots.map(l=>'<option value="'+l.id+'">'+escapeHtml(l.produit)+(l.lot?' ('+escapeHtml(l.lot)+')':'')+' — '+fmt(l.nbPalox)+' palox</option>').join('');
+  }
+
+  function bulkRowHtml(mode, idx){
+    const c0 = state.cellules[0];
+    if(mode==='entree'){
+      return '<div class="entree-row" data-row-idx="'+idx+'">'+
+        '<div class="grid-form two">'+
+          '<label class="field">Cellule<select data-f="cellule">'+celluleOptionsHtml(c0.id)+'</select></label>'+
+          '<label class="field">Ligne<select data-f="ligne">'+ligneOptionsHtml(c0.id)+'</select></label>'+
+          '<label class="field">Produit<input type="text" data-f="produit" placeholder="ECHALOTE" required></label>'+
+          '<label class="field">Lot<input type="text" data-f="lot" placeholder="L167GB03"></label>'+
+          '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
+          '<label class="field">Calibre<input type="text" data-f="calibre" placeholder="30/40"></label>'+
+          '<label class="field">Traitement<input type="text" data-f="traitement" placeholder="TRESSE, RDF, BIO…"></label>'+
+          '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required></label>'+
+          '<label class="field span-2">Poids (kg) — optionnel<input type="number" min="0" step="0.01" data-f="poids"></label>'+
+          '<label class="field span-2">Commentaire<input type="text" data-f="commentaire"></label>'+
+        '</div>'+
+        (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer cette ligne de saisie</button>' : '')+
+      '</div>';
+    }
+    if(mode==='sortie'){
+      return '<div class="entree-row" data-row-idx="'+idx+'">'+
+        '<div class="grid-form two">'+
+          '<label class="field">Cellule<select data-f="cellule">'+celluleOptionsHtml(c0.id)+'</select></label>'+
+          '<label class="field">Ligne<select data-f="ligne">'+ligneOptionsHtml(c0.id)+'</select></label>'+
+          '<label class="field span-2">Produit<select data-f="lotid">'+lotOptionsHtml(c0.id, c0.lignes[0].id)+'</select></label>'+
+          '<label class="field">Nb de palox à sortir<input type="number" min="1" step="1" data-f="qty" value="1"></label>'+
+          '<label class="field">Poids sorti (kg) — optionnel<input type="number" min="0" step="0.01" data-f="poids"></label>'+
+          '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" placeholder="vente, perte, usage…"></label>'+
+        '</div>'+
+        (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer cette ligne de saisie</button>' : '')+
+      '</div>';
+    }
+    // deplacement
+    return '<div class="entree-row" data-row-idx="'+idx+'">'+
+      '<div class="grid-form two">'+
+        '<label class="field">Cellule source<select data-f="cellule">'+celluleOptionsHtml(c0.id)+'</select></label>'+
+        '<label class="field">Ligne source<select data-f="ligne">'+ligneOptionsHtml(c0.id)+'</select></label>'+
+        '<label class="field span-2">Produit<select data-f="lotid">'+lotOptionsHtml(c0.id, c0.lignes[0].id)+'</select></label>'+
+        '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="qty" value="1"></label>'+
+        '<label class="field">Poids déplacé (kg) — optionnel<input type="number" min="0" step="0.01" data-f="poids"></label>'+
+        '<label class="field">Cellule destination<select data-f="destCellule">'+celluleOptionsHtml(c0.id)+'</select></label>'+
+        '<label class="field">Ligne destination<select data-f="destLigne">'+ligneOptionsHtml(c0.id)+'</select></label>'+
+        '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" placeholder="raison du déplacement…"></label>'+
+      '</div>'+
+      (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer cette ligne de saisie</button>' : '')+
+    '</div>';
+  }
+
+  let bulkRowCounter = 0;
+
+  function openBulkPanel(mode){
+    bulkRowCounter = 0;
+    const titles = { entree: 'Entrée groupée', sortie: 'Sortie groupée', deplacement: 'Déplacement groupé' };
+    const subs = {
+      entree: 'Ajoute du stock sur plusieurs lignes en une seule fois — une ligne de saisie par produit/emplacement.',
+      sortie: 'Sors du stock de plusieurs lignes en une seule fois.',
+      deplacement: 'Déplace du stock entre plusieurs lignes en une seule fois.'
+    };
+    const panel = document.getElementById('detailPanel');
+    panel.innerHTML =
+      '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>'+titles[mode]+'</h3><p>'+subs[mode]+'</p></div>'+
+      '<div class="detail-body">'+
+        '<form id="bulkForm" data-mode="'+mode+'">'+
+          '<div id="bulkRows">'+bulkRowHtml(mode,0)+'</div>'+
+          '<button type="button" class="btn btn-ghost btn-sm" id="addBulkRow" style="margin-top:4px;">+ Ajouter une ligne de saisie</button>'+
+          (mode==='entree' ? '<div class="grid-form two" style="margin-top:12px;"><label class="field">Date<input type="date" name="bulkDate" value="'+today()+'" required></label></div>' :
+           '<div class="grid-form two" style="margin-top:12px;"><label class="field">Date<input type="date" name="bulkDate" value="'+today()+'" required></label></div>')+
+          '<div class="btn-row"><button class="btn '+(mode==='entree'?'btn-green':mode==='sortie'?'btn-warn':'btn-blue')+'" type="submit">Valider</button><span class="msg" id="bulkMsg"></span></div>'+
+        '</form>'+
+      '</div>';
+    panel.classList.add('open');
+    document.getElementById('overlayBg').classList.add('open');
+    panel.dataset.mode = 'bulk';
+    bindBulkEvents(mode);
+  }
+
+  function bulkRowRefresh(row, mode){
+    const celSel = row.querySelector('[data-f="cellule"]');
+    const ligSel = row.querySelector('[data-f="ligne"]');
+    ligSel.innerHTML = ligneOptionsHtml(celSel.value);
+    if(mode!=='entree'){
+      const lotSel = row.querySelector('[data-f="lotid"]');
+      lotSel.innerHTML = lotOptionsHtml(celSel.value, ligSel.value);
+    }
+    if(mode==='deplacement'){
+      const destCelSel = row.querySelector('[data-f="destCellule"]');
+      const destLigSel = row.querySelector('[data-f="destLigne"]');
+      destLigSel.innerHTML = ligneOptionsHtml(destCelSel.value);
+    }
+  }
+
+  function bindBulkEvents(mode){
+    document.getElementById('closeDetail').addEventListener('click', closeDetail);
+    document.getElementById('overlayBg').addEventListener('click', closeDetail);
+
+    const rowsEl = document.getElementById('bulkRows');
+
+    document.getElementById('addBulkRow').addEventListener('click', ()=>{
+      bulkRowCounter++;
+      const wrap = document.createElement('div');
+      wrap.innerHTML = bulkRowHtml(mode, bulkRowCounter);
+      const row = wrap.firstElementChild;
+      rowsEl.appendChild(row);
+      bulkRowRefresh(row, mode);
+    });
+
+    rowsEl.addEventListener('click', (ev)=>{
+      if(ev.target.matches('[data-remove-row]')) ev.target.closest('.entree-row').remove();
+    });
+    rowsEl.addEventListener('change', (ev)=>{
+      const row = ev.target.closest('.entree-row');
+      if(!row) return;
+      if(ev.target.matches('[data-f="cellule"]') || ev.target.matches('[data-f="ligne"]') || ev.target.matches('[data-f="destCellule"]')){
+        bulkRowRefresh(row, mode);
+      }
+    });
+
+    document.getElementById('bulkForm').addEventListener('submit', async (ev)=>{
+      ev.preventDefault();
+      const dateVal = document.querySelector('[name="bulkDate"]').value;
+      const rows = Array.from(rowsEl.querySelectorAll('.entree-row'));
+      const msg = document.getElementById('bulkMsg');
+      let applied = 0, errors = [];
+
+      if(mode==='entree'){
+        const usage = {};
+        rows.forEach((row, idx)=>{
+          const celluleId = row.querySelector('[data-f="cellule"]').value;
+          const ligneId = row.querySelector('[data-f="ligne"]').value;
+          const produit = row.querySelector('[data-f="produit"]').value.trim();
+          const nbPalox = parseFloat(row.querySelector('[data-f="nbPalox"]').value);
+          const ligneObj = getLigne(celluleId, ligneId);
+          const key = celluleId+'|'+ligneId;
+          if(usage[key]==null) usage[key] = ligneOccupied(celluleId, ligneId);
+          if(!produit){ errors.push('Ligne #'+(idx+1)+' : produit manquant'); return; }
+          if(!nbPalox || nbPalox<1){ errors.push('Ligne #'+(idx+1)+' : quantité invalide'); return; }
+          if(usage[key] + nbPalox > ligneObj.capacite){ errors.push('Ligne #'+(idx+1)+' ('+ligneObj.nom+') : ne rentre pas, '+fmt(ligneObj.capacite-usage[key])+' palox restants'); return; }
+          const lotVal = row.querySelector('[data-f="lot"]').value.trim();
+          const parcelle = row.querySelector('[data-f="parcelle"]').value.trim();
+          const calibre = row.querySelector('[data-f="calibre"]').value.trim();
+          const traitement = row.querySelector('[data-f="traitement"]').value.trim();
+          const poidsRaw = row.querySelector('[data-f="poids"]').value;
+          const commentaire = row.querySelector('[data-f="commentaire"]').value.trim();
+          const newLot = { id: uid(), celluleId, ligneId, produit, lot: lotVal, parcelle, calibre, traitement, nbPalox, poids: poidsRaw?parseFloat(poidsRaw):null, dateEntree: dateVal, commentaire };
+          state.lots.push(newLot);
+          addTx('entree', { quantite: nbPalox, poids: newLot.poids, produit, lot: lotVal, date: dateVal, commentaire, label: caseLabel(celluleId,ligneId) });
+          usage[key] += nbPalox;
+          applied++;
+        });
+      } else if(mode==='sortie'){
+        const remaining = {};
+        rows.forEach((row, idx)=>{
+          const lotId = row.querySelector('[data-f="lotid"]').value;
+          const qty = parseFloat(row.querySelector('[data-f="qty"]').value);
+          if(!lotId){ errors.push('Ligne #'+(idx+1)+' : aucun produit sélectionné'); return; }
+          const lot = lotById(lotId);
+          if(!lot){ errors.push('Ligne #'+(idx+1)+' : produit introuvable'); return; }
+          if(remaining[lotId]==null) remaining[lotId] = lot.nbPalox;
+          if(!qty || qty<1 || qty>remaining[lotId]){ errors.push('Ligne #'+(idx+1)+' : quantité invalide ('+fmt(remaining[lotId])+' disponibles)'); return; }
+          const poidsRaw = row.querySelector('[data-f="poids"]').value;
+          const poids = poidsRaw? parseFloat(poidsRaw): null;
+          const commentaire = row.querySelector('[data-f="commentaire"]').value.trim();
+          addTx('sortie', { quantite: qty, poids, produit: lot.produit, lot: lot.lot, date: dateVal, commentaire, label: caseLabel(lot.celluleId,lot.ligneId) });
+          remaining[lotId] -= qty;
+          if(remaining[lotId]<=0){ state.lots = state.lots.filter(x=>x.id!==lotId); }
+          else{ lot.nbPalox = remaining[lotId]; if(poids!=null && lot.poids!=null) lot.poids = Math.max(0, lot.poids-poids); }
+          applied++;
+        });
+      } else {
+        const remaining = {}, usage = {};
+        rows.forEach((row, idx)=>{
+          const lotId = row.querySelector('[data-f="lotid"]').value;
+          const qty = parseFloat(row.querySelector('[data-f="qty"]').value);
+          const destCelluleId = row.querySelector('[data-f="destCellule"]').value;
+          const destLigneId = row.querySelector('[data-f="destLigne"]').value;
+          if(!lotId){ errors.push('Ligne #'+(idx+1)+' : aucun produit sélectionné'); return; }
+          const lot = lotById(lotId);
+          if(!lot){ errors.push('Ligne #'+(idx+1)+' : produit introuvable'); return; }
+          if(remaining[lotId]==null) remaining[lotId] = lot.nbPalox;
+          if(!qty || qty<1 || qty>remaining[lotId]){ errors.push('Ligne #'+(idx+1)+' : quantité invalide ('+fmt(remaining[lotId])+' disponibles)'); return; }
+          const destLigneObj = getLigne(destCelluleId, destLigneId);
+          const destKey = destCelluleId+'|'+destLigneId;
+          const isSameSpot = destCelluleId===lot.celluleId && destLigneId===lot.ligneId;
+          if(usage[destKey]==null) usage[destKey] = ligneOccupied(destCelluleId, destLigneId) - (isSameSpot ? lot.nbPalox : 0);
+          if(usage[destKey] + qty > destLigneObj.capacite){ errors.push('Ligne #'+(idx+1)+' : ne rentre pas à destination ('+fmt(destLigneObj.capacite-usage[destKey])+' palox restants)'); return; }
+          const poidsRaw = row.querySelector('[data-f="poids"]').value;
+          const poids = poidsRaw? parseFloat(poidsRaw): null;
+          const commentaire = row.querySelector('[data-f="commentaire"]').value.trim();
+          const dest = Object.assign({}, lot, { id: uid(), celluleId: destCelluleId, ligneId: destLigneId, nbPalox: qty, poids });
+          state.lots.push(dest);
+          addTx('deplacement', { quantite: qty, poids, produit: lot.produit, lot: lot.lot, date: dateVal, commentaire, fromLabel: caseLabel(lot.celluleId,lot.ligneId), toLabel: caseLabel(destCelluleId,destLigneId) });
+          remaining[lotId] -= qty;
+          usage[destKey] += qty;
+          if(remaining[lotId]<=0){ state.lots = state.lots.filter(x=>x.id!==lotId); }
+          else{ lot.nbPalox = remaining[lotId]; if(poids!=null && lot.poids!=null) lot.poids = Math.max(0, lot.poids-poids); }
+          applied++;
+        });
+      }
+
+      await saveState();
+      renderHeaderStats();
+      if(errors.length===0){
+        closeDetail();
+        renderTab(currentTab);
+      } else {
+        msg.innerHTML = (applied>0 ? '✓ '+applied+' ligne(s) appliquée(s).<br>':'')+'⚠ '+errors.join('<br>⚠ ');
+        msg.className = 'msg err';
+        renderTab(currentTab);
+      }
     });
   }
 
@@ -869,12 +983,12 @@
     const rows = results.map(l=>{
       return '<tr><td>'+escapeHtml(l.produit)+'</td><td class="mono">'+escapeHtml(l.lot||'—')+'</td>'+
         '<td>'+escapeHtml(l.parcelle||'—')+'</td><td>'+escapeHtml(l.calibre||'—')+'</td><td>'+escapeHtml(l.traitement||'—')+'</td>'+
-        '<td class="mono">'+fmt(l.nbPalox)+'</td><td class="mono">'+l.hauteurDebut+'-'+lotHauteurFin(l)+'</td>'+
+        '<td class="mono">'+fmt(l.nbPalox)+'</td>'+
         '<td class="mono">'+(l.poids!=null? fmt(l.poids)+' kg':'—')+'</td>'+
-        '<td>'+escapeHtml(caseLabel(l.celluleId,l.ligneId,l.position))+'</td>'+
+        '<td>'+escapeHtml(caseLabel(l.celluleId,l.ligneId))+'</td>'+
         '<td><button class="btn btn-sm btn-copper" data-locate="'+l.id+'">Localiser</button></td></tr>';
     }).join('');
-    return '<div class="table-scroll"><table class="data"><thead><tr><th>Produit</th><th>Lot</th><th>Parcelle</th><th>Calibre</th><th>Traitement</th><th>Palox</th><th>Niveaux</th><th>Poids</th><th>Emplacement</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    return '<div class="table-scroll"><table class="data"><thead><tr><th>Produit</th><th>Lot</th><th>Parcelle</th><th>Calibre</th><th>Traitement</th><th>Palox</th><th>Poids</th><th>Emplacement</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
 
   // ---------- HISTORIQUE ----------
@@ -893,7 +1007,7 @@
         '<td class="mono">'+(t.poids!=null? fmt(t.poids)+' kg':'—')+'</td>'+
         '<td>'+escapeHtml(t.commentaire||'—')+'</td></tr>';
     }).join('');
-    return '<div class="table-scroll"><table class="data"><thead><tr><th>Date</th><th>Type</th><th>Produit</th><th>Position</th><th>Palox</th><th>Poids</th><th>Commentaire</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    return '<div class="table-scroll"><table class="data"><thead><tr><th>Date</th><th>Type</th><th>Produit</th><th>Emplacement</th><th>Palox</th><th>Poids</th><th>Commentaire</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
 
   // ---------- CELLULES (config) ----------
@@ -906,20 +1020,12 @@
       '</div></div>';
     const blocks = state.cellules.map(c=>{
       const lignesHtml = c.lignes.map(l=>{
-        const hposItems = l.hauteurParPosition.map((v,idx)=>{
-          return '<div class="hpos-item"><span>P'+(idx+1)+'</span><input type="number" min="1" value="'+v+'" data-hpos="'+c.id+'|'+l.id+'|'+idx+'"></div>';
-        }).join('');
-        return '<div class="ligne-row" data-ligne-row="'+l.id+'" style="flex-direction:column; align-items:stretch;">'+
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+        return '<div class="ligne-row" data-ligne-row="'+l.id+'">'+
             '<input type="text" value="'+escapeHtml(l.nom)+'" data-ligne-nom="'+c.id+'|'+l.id+'">'+
-            '<span style="color:var(--ink-soft)">positions:</span>'+
-            '<input type="number" min="1" value="'+l.positions+'" data-ligne-pos="'+c.id+'|'+l.id+'">'+
+            '<span style="color:var(--ink-soft)">capacité :</span>'+
+            '<input type="number" min="1" value="'+l.capacite+'" data-ligne-cap="'+c.id+'|'+l.id+'">'+
+            '<span style="color:var(--ink-soft)">palox</span>'+
             '<button class="del-btn" data-del-ligne="'+c.id+'|'+l.id+'">supprimer la ligne</button>'+
-          '</div>'+
-          '<div style="font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-top:6px;">Hauteur max par position</div>'+
-          '<div class="hpos-scroller">'+hposItems+'</div>'+
-          '<div class="bulk-hauteur">Appliquer <input type="number" min="1" value="4" data-bulk-input="'+c.id+'|'+l.id+'"> niveaux à toutes les positions'+
-            ' <button class="btn btn-ghost btn-sm" data-bulk-apply="'+c.id+'|'+l.id+'">Appliquer</button></div>'+
         '</div>';
       }).join('');
       return '<div class="config-cellule" data-cellule-block="'+c.id+'">'+
@@ -929,29 +1035,21 @@
         '<button class="btn btn-ghost btn-sm" style="margin-top:8px;" data-add-ligne="'+c.id+'">+ Ajouter une ligne</button>'+
       '</div>';
     }).join('');
-    return backupSection+'<div class="card"><h2>Structure des cellules</h2><p class="sub">Configure les cellules, leurs lignes, le nombre de positions et la hauteur maximale d\'empilement — réglable indépendamment pour chaque position, puisque certaines colonnes vont à 4 palox de haut et d\'autres à 5. Une cellule ou ligne contenant encore du stock ne peut pas être supprimée.</p>'+
+    return backupSection+'<div class="card"><h2>Structure des cellules</h2><p class="sub">Configure les cellules, leurs lignes et la capacité de chaque ligne (en nombre de palox). Une cellule ou ligne contenant encore du stock ne peut pas être supprimée.</p>'+
       blocks+
       '<button class="btn btn-copper" id="addCellule" style="margin-top:6px;">+ Nouvelle cellule</button></div>';
   }
 
   function bindTabEvents(tab){
-    if(tab==='coupe'){
-      document.querySelectorAll('#coupeCelluleTabs button').forEach(b=>{
-        b.addEventListener('click', ()=>{ currentCelluleId = b.dataset.cellule; currentLigneId = null; renderTab('coupe'); });
+    if(tab==='stockage'){
+      document.querySelectorAll('#stockageCelluleTabs button').forEach(b=>{
+        b.addEventListener('click', ()=>{ currentCelluleId = b.dataset.cellule; renderTab('stockage'); });
       });
-      document.querySelectorAll('#coupeLigneTabs button').forEach(b=>{
-        b.addEventListener('click', ()=>{ currentLigneId = b.dataset.ligne; renderTab('coupe'); });
+      document.querySelectorAll('.ligne-list-item').forEach(row=>{
+        row.addEventListener('click', ()=>{ openLigneDetail(row.dataset.cellule, row.dataset.ligne); });
       });
-      document.querySelectorAll('.coupe-cell:not(.disabled)').forEach(cell=>{
-        cell.addEventListener('click', ()=>{
-          if(cell.dataset.lot){
-            const l = lotById(cell.dataset.lot);
-            openCaseDetail(l.celluleId, l.ligneId, l.position);
-          } else if(cell.dataset.case){
-            const [celluleId, ligneId, position] = cell.dataset.case.split('|');
-            openCaseDetail(celluleId, ligneId, parseInt(position));
-          }
-        });
+      document.querySelectorAll('[data-bulk]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{ openBulkPanel(btn.dataset.bulk); });
       });
     }
     if(tab==='recherche'){
@@ -980,52 +1078,20 @@
           await saveState(); renderTab('cellules');
         });
       });
-      document.querySelectorAll('[data-ligne-pos]').forEach(inp=>{
+      document.querySelectorAll('[data-ligne-cap]').forEach(inp=>{
         inp.addEventListener('change', async ()=>{
-          const [cId, lId] = inp.dataset.lignePos.split('|');
+          const [cId, lId] = inp.dataset.ligneCap.split('|');
           const newVal = Math.max(1, parseInt(inp.value)||1);
-          const ligneObj = getLigne(cId,lId);
-          const maxUsed = Math.max(0, ...state.lots.filter(x=>x.celluleId===cId && x.ligneId===lId).map(x=>x.position));
-          if(newVal < maxUsed){ alert('Impossible : des palox occupent déjà la position '+maxUsed+'.'); renderTab('cellules'); return; }
-          if(newVal > ligneObj.positions){
-            while(ligneObj.hauteurParPosition.length < newVal) ligneObj.hauteurParPosition.push(ligneObj.hauteurParPosition[ligneObj.hauteurParPosition.length-1] || 4);
-          } else {
-            ligneObj.hauteurParPosition = ligneObj.hauteurParPosition.slice(0, newVal);
-          }
-          ligneObj.positions = newVal;
-          await saveState(); renderTab('cellules');
-        });
-      });
-      document.querySelectorAll('[data-hpos]').forEach(inp=>{
-        inp.addEventListener('change', async ()=>{
-          const [cId, lId, idxStr] = inp.dataset.hpos.split('|');
-          const idx = parseInt(idxStr);
-          const position = idx+1;
-          const newVal = Math.max(1, parseInt(inp.value)||1);
-          const maxUsed = Math.max(0, ...lotsInCase(cId,lId,position).map(x=>lotHauteurFin(x)));
-          if(newVal < maxUsed){ alert('Impossible : la position '+position+' contient déjà des palox jusqu\'au niveau '+maxUsed+'.'); renderTab('cellules'); return; }
-          getLigne(cId,lId).hauteurParPosition[idx] = newVal;
-          await saveState(); renderTab('cellules');
-        });
-      });
-      document.querySelectorAll('[data-bulk-apply]').forEach(btn=>{
-        btn.addEventListener('click', async ()=>{
-          const [cId, lId] = btn.dataset.bulkApply.split('|');
-          const input = document.querySelector('[data-bulk-input="'+cId+'|'+lId+'"]');
-          const newVal = Math.max(1, parseInt(input.value)||1);
-          const ligneObj = getLigne(cId,lId);
-          for(let p=1;p<=ligneObj.positions;p++){
-            const maxUsed = Math.max(0, ...lotsInCase(cId,lId,p).map(x=>lotHauteurFin(x)));
-            if(newVal < maxUsed){ alert('Impossible : la position '+p+' contient déjà des palox jusqu\'au niveau '+maxUsed+'.'); return; }
-          }
-          ligneObj.hauteurParPosition = Array(ligneObj.positions).fill(newVal);
+          const occ = ligneOccupied(cId, lId);
+          if(newVal < occ){ alert('Impossible : cette ligne contient déjà '+fmt(occ)+' palox.'); renderTab('cellules'); return; }
+          getLigne(cId,lId).capacite = newVal;
           await saveState(); renderTab('cellules');
         });
       });
       document.querySelectorAll('[data-add-ligne]').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
           const c = getCellule(btn.dataset.addLigne);
-          c.lignes.push({ id: uid(), nom: 'Nouvelle ligne', positions: 13, hauteurParPosition: Array(13).fill(4) });
+          c.lignes.push({ id: uid(), nom: 'Nouvelle ligne', capacite: 50 });
           await saveState(); renderTab('cellules');
         });
       });
@@ -1052,7 +1118,7 @@
       document.getElementById('addCellule').addEventListener('click', async ()=>{
         const nom = prompt('Nom de la nouvelle cellule :', 'Nouvelle cellule');
         if(!nom) return;
-        state.cellules.push({ id: uid(), nom: nom.trim(), lignes: [{ id: uid(), nom: 'Ligne 1', positions: 13, hauteurParPosition: Array(13).fill(4) }] });
+        state.cellules.push({ id: uid(), nom: nom.trim(), lignes: [{ id: uid(), nom: 'Ligne 1', capacite: 50 }] });
         await saveState(); renderTab('cellules'); renderHeaderStats();
       });
     }
@@ -1063,12 +1129,8 @@
       btn.addEventListener('click', ()=>{
         const l = lotById(btn.dataset.locate); if(!l) return;
         currentCelluleId = l.celluleId;
-        currentLigneId = l.ligneId;
-        renderTab('coupe');
-        setTimeout(()=>{
-          const cell = document.querySelector('.coupe-cell[data-lot="'+l.id+'"]');
-          if(cell){ cell.scrollIntoView({behavior:'smooth', block:'center', inline:'center'}); }
-        }, 50);
+        renderTab('stockage');
+        openLigneDetail(l.celluleId, l.ligneId);
       });
     });
   }
@@ -1101,7 +1163,7 @@
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('mainWrap').style.display = '';
       loaded = false;
-      currentCelluleId = null; currentLigneId = null; currentTab = 'coupe';
+      currentCelluleId = null; currentTab = 'stockage';
       attachSnapshotListener();
     } else {
       loaded = false;
