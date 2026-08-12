@@ -125,8 +125,6 @@
   .palox-weights .pw-item{ display:flex; flex-direction:column; gap:4px; background:#fff; border:1px solid var(--line); border-radius:8px; padding:7px; min-width:88px; }
   .palox-weights .pw-item > span{ font-size:9.5px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; text-transform:uppercase; letter-spacing:.03em; }
   .palox-weights .pw-item input[type=number]{ width:100%; font-family:'IBM Plex Mono'; font-size:12.5px; padding:6px 6px; border:1px solid var(--line); border-radius:6px; }
-  .pw-mixte-toggle{ display:flex; align-items:center; gap:5px; font-size:10px; color:var(--ink-soft); cursor:pointer; white-space:nowrap; }
-  .pw-mixte-toggle input{ width:auto; margin:0; }
   .selection-recap{ font-size:12.5px; color:var(--ink-soft); margin-bottom:10px; background:var(--panel); border-radius:6px; padding:8px 10px; }
 
   .divider-label{ font-family:'IBM Plex Mono', monospace; font-size: 10.5px; font-weight:600; color: var(--ink-soft); text-transform:uppercase; letter-spacing: 0.08em; margin: 14px 0 10px; display:flex; align-items:center; gap:10px; }
@@ -529,7 +527,7 @@
 
     const toolbar = currentRole==='editor' ?
       '<div class="stockage-toolbar">'+
-        '<button class="btn btn-green btn-sm" id="openBulkEntree">+ Entrée groupée</button>'+
+        '<button class="btn btn-green btn-sm" id="openBulkEntree">+ Entrée</button>'+
       '</div>' : '';
 
     const lignesHtml = c.lignes.map(l=>{
@@ -562,8 +560,6 @@
   }
 
   // ---------- DETAIL PANEL (une ligne, détail par lot) ----------
-  let entreeRowCounter = 0;
-
   function batchCardHtml(batch){
     const summary = batchPoidsSummary(batch);
     const poidsStr = summary.unknown>0 ?
@@ -594,37 +590,15 @@
         '<div class="lot-actions">'+
           '<button class="btn btn-sm btn-warn" data-act="sortie" data-batch="'+batch.batchId+'">Sortir la sélection</button>'+
           '<button class="btn btn-sm btn-blue" data-act="deplacer" data-batch="'+batch.batchId+'">Déplacer la sélection</button>'+
-          '<button class="btn btn-sm btn-ghost" data-edit-toggle="'+batch.batchId+'">Modifier cette entrée</button>'+
-          '<button class="btn btn-sm btn-ghost" data-delete-batch="'+batch.batchId+'">Supprimer cette entrée</button>'+
+          '<button class="btn btn-sm btn-copper" data-act="modifier" data-batch="'+batch.batchId+'">Modifier la sélection</button>'+
+          '<button class="btn btn-sm btn-ghost" data-act="supprimer" data-batch="'+batch.batchId+'">Supprimer la sélection</button>'+
         '</div>'+
         '<div class="inline-form" id="form-sortie-'+batch.batchId+'"></div>'+
         '<div class="inline-form" id="form-deplacer-'+batch.batchId+'"></div>'+
-        '<div class="inline-form" id="form-edit-'+batch.batchId+'"></div>'
+        '<div class="inline-form" id="form-modifier-'+batch.batchId+'"></div>'
       ) : '')+
     '</div>';
   }
-  function formEditBatch(batch){
-    const existing = batch.paloxs.map(p=>({ poids: p.poids, mixte: p.poidsLot2!=null, poidsLot2: p.poidsLot2 }));
-    const hasLot2 = !!(batch.lot2 && batch.lot2.trim());
-    return '<div class="entree-row" data-edit-batch="'+batch.batchId+'">'+
-      '<div class="grid-form two">'+
-        '<label class="field">Produit<input type="text" data-f="produit" value="'+escapeHtml(batch.produit||'')+'" required></label>'+
-        '<label class="field">Lot<input type="text" data-f="lot" value="'+escapeHtml(batch.lot||'')+'"></label>'+
-        '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" value="'+escapeHtml(batch.lot2||'')+'"></label>'+
-        '<label class="field">Parcelle<input type="text" data-f="parcelle" value="'+escapeHtml(batch.parcelle||'')+'"></label>'+
-        '<label class="field">Calibre<input type="text" data-f="calibre" value="'+escapeHtml(batch.calibre||'')+'"></label>'+
-        '<label class="field">Traitement<input type="text" data-f="traitement" value="'+escapeHtml(batch.traitement||'')+'"></label>'+
-        '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="'+batch.paloxs.length+'" required></label>'+
-        '<label class="field">Date<input type="date" data-f="dateEntree" value="'+escapeHtml(batch.dateEntree||today())+'"></label>'+
-        '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" value="'+escapeHtml(batch.commentaire||'')+'"></label>'+
-      '</div>'+
-      '<div class="hint" style="display:block;margin-top:10px;">Poids par palox (kg) — optionnel, laisse vide si inconnu</div>'+
-      '<div class="palox-weights">'+paloxWeightInputsHtml(batch.paloxs.length, existing, hasLot2, batch.lot, batch.lot2)+'</div>'+
-      '<div class="btn-row"><button type="button" class="btn btn-copper btn-sm" data-save-edit="'+batch.batchId+'">Enregistrer les modifications</button>'+
-      '<button type="button" class="btn btn-ghost btn-sm" data-cancel-edit="'+batch.batchId+'">Annuler</button><span class="msg" id="msg-edit-'+batch.batchId+'"></span></div>'+
-    '</div>';
-  }
-
   function openLigneDetail(celluleId, ligneId, filterProduit){
     let batches = batchesInLigne(celluleId, ligneId);
     if(filterProduit){
@@ -639,15 +613,11 @@
       ? '<p style="color:var(--ink-soft);font-size:13.5px;">'+(filterProduit? 'Aucun palox de « '+escapeHtml(filterProduit)+' » ici pour le moment.' : 'Aucun palox ici pour le moment.')+'</p>'
       : batches.map(batchCardHtml).join('');
 
-    entreeRowCounter = 0;
-
     const filterBarHtml = filterProduit ?
       '<div class="filter-bar">Filtré sur <b>'+escapeHtml(filterProduit)+'</b><button type="button" class="btn btn-ghost btn-sm" id="clearFilter">✕ Voir toute la ligne</button></div>' : '';
 
     const addSectionHtml = currentRole==='editor' ?
-        '<div class="divider-label">Ajouter du stock ici</div>'+
-        '<p style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">'+(l.capacite-occ)+' palox restants dans cette ligne. Pour répartir une entrée sur plusieurs lignes en une fois, utilise « Entrée groupée » dans l\'onglet Stockage.</p>'+
-        formEntreeLigne(celluleId, ligneId)
+        '<p style="font-size:12px;color:var(--ink-soft);">'+(l.capacite-occ)+' palox restants dans cette ligne. Pour ajouter du stock, utilise le bouton « + Entrée » dans l\'onglet Stockage.</p>'
       : '<div class="readonly-note">Consultation seule — contacte un compte de gestion pour modifier cette ligne.</div>';
 
     const panel = document.getElementById('detailPanel');
@@ -679,14 +649,10 @@
     let html = '';
     for(let i=0;i<count;i++){
       const data = existing[i] || {};
-      const mixte = !!(hasLot2 && data.mixte);
       html += '<div class="pw-item">'+
         '<span>'+(count>1? 'Palox '+(i+1) : 'Poids')+'</span>'+
-        '<input type="number" min="0" step="0.01" data-f="poidsIndividuel" data-idx="'+i+'" value="'+(data.poids!=null?data.poids:'')+'" placeholder="'+(mixte? escapeHtml(lot1Label||'Lot 1')+' kg' : 'kg')+'">'+
-        (hasLot2 ? (
-          '<label class="pw-mixte-toggle"><input type="checkbox" data-f="mixte" data-idx="'+i+'" '+(mixte?'checked':'')+'> palox mixte</label>'+
-          '<input type="number" min="0" step="0.01" data-f="poidsLot2Individuel" data-idx="'+i+'" value="'+(data.poidsLot2!=null?data.poidsLot2:'')+'" placeholder="'+escapeHtml(lot2Label||'Lot 2')+' kg" style="display:'+(mixte?'block':'none')+';">'
-        ) : '')+
+        '<input type="number" min="0" step="0.01" data-f="poidsIndividuel" data-idx="'+i+'" value="'+(data.poids!=null?data.poids:'')+'" placeholder="'+(hasLot2? escapeHtml(lot1Label||'Lot 1')+' kg' : 'kg')+'">'+
+        (hasLot2 ? '<input type="number" min="0" step="0.01" data-f="poidsLot2Individuel" data-idx="'+i+'" value="'+(data.poidsLot2!=null?data.poidsLot2:'')+'" placeholder="'+escapeHtml(lot2Label||'Lot 2')+' kg">' : '')+
       '</div>';
     }
     return html;
@@ -694,75 +660,32 @@
   function resolvePaloxWeight(paloxState){
     paloxState = paloxState || {};
     const poids = paloxState.poids!=null ? parseFloat(paloxState.poids) : null;
-    const poidsLot2 = (paloxState.mixte && paloxState.poidsLot2!=null) ? parseFloat(paloxState.poidsLot2) : null;
+    const poidsLot2 = paloxState.poidsLot2!=null ? parseFloat(paloxState.poidsLot2) : null;
     return { poids, poidsLot2 };
   }
   function readPaloxWeightsState(weightsEl){
     return Array.from(weightsEl.querySelectorAll('.pw-item')).map(item=>{
       const poidsInp = item.querySelector('[data-f="poidsIndividuel"]');
-      const mixteInp = item.querySelector('[data-f="mixte"]');
       const lot2Inp = item.querySelector('[data-f="poidsLot2Individuel"]');
       return {
         poids: poidsInp && poidsInp.value!==''? poidsInp.value : null,
-        mixte: mixteInp ? mixteInp.checked : false,
         poidsLot2: lot2Inp && lot2Inp.value!==''? lot2Inp.value : null
       };
     });
   }
-  function refreshPaloxWeightInputs(row){
+  function refreshPaloxWeightInputs(row, fixedCount){
     const nbInput = row.querySelector('[data-f="nbPalox"]');
     const lot2Input = row.querySelector('[data-f="lot2"]');
     const lotInput = row.querySelector('[data-f="lot"]');
     const weightsEl = row.querySelector('.palox-weights');
-    if(!nbInput || !weightsEl) return;
+    if(!weightsEl || (fixedCount==null && !nbInput)) return;
     const existing = readPaloxWeightsState(weightsEl);
-    const count = Math.min(500, Math.max(1, Math.round(parseFloat(nbInput.value)||1)));
+    const count = fixedCount!=null ? fixedCount : Math.min(500, Math.max(1, Math.round(parseFloat(nbInput.value)||1)));
     const hasLot2 = !!(lot2Input && lot2Input.value.trim());
     const lot1Label = lotInput ? lotInput.value.trim() : '';
     const lot2Label = lot2Input ? lot2Input.value.trim() : '';
     weightsEl.innerHTML = paloxWeightInputsHtml(count, existing, hasLot2, lot1Label, lot2Label);
   }
-  function entreeRowHtml(idx){
-    return '<div class="entree-row" data-row-idx="'+idx+'">'+
-      '<div class="grid-form two">'+
-        '<label class="field">Produit<input type="text" data-f="produit" placeholder="ECHALOTE" required></label>'+
-        '<label class="field">Lot<input type="text" data-f="lot" placeholder="L167GB03"></label>'+
-        '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" placeholder="si palox mixte"></label>'+
-        '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
-        '<label class="field">Calibre<input type="text" data-f="calibre" placeholder="30/40"></label>'+
-        '<label class="field">Traitement<input type="text" data-f="traitement" placeholder="TRESSE, RDF, BIO…"></label>'+
-        '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required></label>'+
-        '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" placeholder="observations…"></label>'+
-      '</div>'+
-      '<div class="hint" style="display:block;margin-top:10px;">Poids par palox (kg) — optionnel, laisse vide si inconnu</div>'+
-      '<div class="palox-weights">'+paloxWeightInputsHtml(1)+'</div>'+
-      (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer cette ligne de saisie</button>' : '')+
-    '</div>';
-  }
-  function formEntreeLigne(celluleId, ligneId){
-    return '<form id="formEntree" data-cellule="'+celluleId+'" data-ligne="'+ligneId+'">'+
-      '<div id="entreeRows">'+entreeRowHtml(0)+'</div>'+
-      '<button type="button" class="btn btn-ghost btn-sm" id="addEntreeRow" style="margin-top:4px;">+ Ajouter un autre produit ici</button>'+
-      '<div class="grid-form two" style="margin-top:12px;">'+
-        '<label class="field">Date<input type="date" name="entreeDate" value="'+today()+'" required></label>'+
-      '</div>'+
-      '<div class="btn-row"><button class="btn btn-green" type="submit">Enregistrer</button><span class="msg" id="entreeMsg"></span></div>'+
-    '</form>';
-  }
-
-  function collectPendingRowInputs(container){
-    return Array.from(container.querySelectorAll('.entree-row')).map(row=>{
-      const get = (f)=> row.querySelector('[data-f="'+f+'"]').value;
-      const weightsEl = row.querySelector('.palox-weights');
-      const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
-      return {
-        produit: get('produit').trim(), lot: get('lot').trim(), lot2: get('lot2').trim(), parcelle: get('parcelle').trim(),
-        calibre: get('calibre').trim(), traitement: get('traitement').trim(),
-        nbPalox: parseFloat(get('nbPalox')), paloxStates, commentaire: get('commentaire').trim()
-      };
-    });
-  }
-
   function formSortieSelection(ids){
     const paloxs = ids.map(paloxById).filter(Boolean);
     const known = paloxs.filter(p=>paloxTotalPoids(p)!=null);
@@ -792,170 +715,65 @@
       '<div class="btn-row"><button class="btn btn-blue btn-sm" data-confirm-selection="deplacer">Confirmer le déplacement</button>'+
       '<button class="btn btn-ghost btn-sm" data-cancel-selection>Annuler</button><span class="msg" id="msg-selection"></span></div>';
   }
+  function formModifierSelection(ids){
+    const paloxs = ids.map(paloxById).filter(Boolean);
+    if(paloxs.length===0) return '';
+    const first = paloxs[0];
+    const existing = paloxs.map(p=>({ poids: p.poids, poidsLot2: p.poidsLot2 }));
+    const hasLot2 = !!(first.lot2 && first.lot2.trim());
+    return '<div class="selection-recap">'+paloxs.length+' palox sélectionné(s) — les champs ci-dessous s\'appliquent à toute la sélection</div>'+
+      '<div class="entree-row" data-modifier-row>'+
+        '<div class="grid-form two">'+
+          '<label class="field">Produit<input type="text" data-f="produit" value="'+escapeHtml(first.produit||'')+'" required></label>'+
+          '<label class="field">Lot<input type="text" data-f="lot" value="'+escapeHtml(first.lot||'')+'"></label>'+
+          '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" value="'+escapeHtml(first.lot2||'')+'"></label>'+
+          '<label class="field">Parcelle<input type="text" data-f="parcelle" value="'+escapeHtml(first.parcelle||'')+'"></label>'+
+          '<label class="field">Calibre<input type="text" data-f="calibre" value="'+escapeHtml(first.calibre||'')+'"></label>'+
+          '<label class="field">Traitement<input type="text" data-f="traitement" value="'+escapeHtml(first.traitement||'')+'"></label>'+
+          '<label class="field">Date<input type="date" data-f="dateEntree" value="'+escapeHtml(first.dateEntree||today())+'"></label>'+
+          '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" value="'+escapeHtml(first.commentaire||'')+'"></label>'+
+        '</div>'+
+        '<div class="hint" style="display:block;margin-top:10px;">Poids par palox sélectionné (kg) — optionnel</div>'+
+        '<div class="palox-weights">'+paloxWeightInputsHtml(paloxs.length, existing, hasLot2, first.lot, first.lot2)+'</div>'+
+      '</div>'+
+      '<div class="btn-row"><button class="btn btn-copper btn-sm" data-confirm-selection="modifier">Enregistrer les modifications</button>'+
+      '<button class="btn btn-ghost btn-sm" data-cancel-selection>Annuler</button><span class="msg" id="msg-selection"></span></div>';
+  }
 
   function bindDetailEvents(){
     document.getElementById('closeDetail').addEventListener('click', closeDetail);
     document.getElementById('overlayBg').addEventListener('click', closeDetail);
 
-    const fe = document.getElementById('formEntree');
-    if(fe){
-      const celluleId = fe.dataset.cellule, ligneId = fe.dataset.ligne;
-
-      document.getElementById('addEntreeRow').addEventListener('click', ()=>{
-        entreeRowCounter++;
-        const wrap = document.createElement('div');
-        wrap.innerHTML = entreeRowHtml(entreeRowCounter);
-        document.getElementById('entreeRows').appendChild(wrap.firstElementChild);
-      });
-      document.getElementById('entreeRows').addEventListener('click', (ev)=>{
-        if(ev.target.matches('[data-remove-row]')) ev.target.closest('.entree-row').remove();
-      });
-      document.getElementById('entreeRows').addEventListener('input', (ev)=>{
-        if(ev.target.matches('[data-f="nbPalox"]') || ev.target.matches('[data-f="lot"]') || ev.target.matches('[data-f="lot2"]')) refreshPaloxWeightInputs(ev.target.closest('.entree-row'));
-      });
-      document.getElementById('entreeRows').addEventListener('change', (ev)=>{
-        if(ev.target.matches('[data-f="mixte"]')) refreshPaloxWeightInputs(ev.target.closest('.entree-row'));
-      });
-
-      fe.addEventListener('submit', async (ev)=>{
-        ev.preventDefault();
-        const dateVal = fe.querySelector('[name="entreeDate"]').value;
-        const rows = collectPendingRowInputs(fe);
-        const msg = document.getElementById('entreeMsg');
-        const ligneObj = getLigne(celluleId, ligneId);
-        let placed = 0, skipped = 0;
-
-        for(let i=0;i<rows.length;i++){
-          const row = rows[i];
-          if(!row.produit){ skipped++; continue; }
-          if(!row.nbPalox || row.nbPalox<1){ skipped++; continue; }
-          const count = Math.round(row.nbPalox);
-          const used = ligneOccupied(celluleId, ligneId);
-          if(used + count > ligneObj.capacite){
-            msg.textContent = '⚠ « '+row.produit+' » ne rentre pas ('+(ligneObj.capacite-used)+' palox restants) — ligne ignorée';
-            msg.className = 'msg err';
-            skipped++; continue;
-          }
-          const batchId = uid();
-          const poidsKnown = [];
-          for(let n=0;n<count;n++){
-            const { poids: poidsUnit, poidsLot2: poidsLot2Unit } = resolvePaloxWeight(row.paloxStates[n]);
-            if(poidsUnit!=null || poidsLot2Unit!=null) poidsKnown.push((poidsUnit||0) + (poidsLot2Unit||0));
-            state.lots.push({ id: uid(), celluleId, ligneId, batchId, produit: row.produit, lot: row.lot, lot2: row.lot2, parcelle: row.parcelle,
-              calibre: row.calibre, traitement: row.traitement, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree: dateVal, commentaire: row.commentaire });
-          }
-          const poidsTotal = poidsKnown.length ? poidsKnown.reduce((a,b)=>a+b,0) : null;
-          addTx('entree', { quantite: count, poids: poidsTotal, produit: row.produit, lot: row.lot, lot2: row.lot2, date: dateVal, commentaire: row.commentaire, label: caseLabel(celluleId,ligneId) });
-          placed++;
-        }
-
-        await saveState();
-        renderHeaderStats();
-        openLigneDetail(celluleId, ligneId, document.getElementById('detailPanel').dataset.filterProduit || undefined);
-        if(placed>0 && skipped===0){
-          const freshMsg = document.getElementById('entreeMsg');
-          if(freshMsg){ freshMsg.textContent = '✓ '+placed+' entrée(s) enregistrée(s)'; freshMsg.className='msg ok'; }
-        }
-        renderTab(currentTab);
-      });
-    }
-
     document.querySelectorAll('[data-act]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
+      btn.addEventListener('click', async ()=>{
         const batchId = btn.dataset.batch, act = btn.dataset.act;
         const card = btn.closest('.lot-card');
         const checked = Array.from(card.querySelectorAll('input[type=checkbox]:checked')).map(cb=>cb.dataset.palox);
-        const formEl = document.getElementById('form-'+act+'-'+batchId);
         if(checked.length===0){
           alert('Sélectionne au moins un palox dans la liste ci-dessus.');
           return;
         }
-        formEl.innerHTML = act==='sortie' ? formSortieSelection(checked) : formDeplacerSelection(checked, card.dataset.cellule);
+        if(act==='supprimer'){
+          if(!confirm('Supprimer définitivement '+checked.length+' palox sélectionné(s) ? Cette action ne peut pas être annulée.')) return;
+          const idSet = new Set(checked);
+          state.lots = state.lots.filter(l=>!idSet.has(l.id));
+          await saveState();
+          renderHeaderStats();
+          openLigneDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne, document.getElementById('detailPanel').dataset.filterProduit || undefined);
+          renderTab(currentTab);
+          return;
+        }
+        const formEl = document.getElementById('form-'+act+'-'+batchId);
+        if(act==='sortie') formEl.innerHTML = formSortieSelection(checked);
+        else if(act==='deplacer') formEl.innerHTML = formDeplacerSelection(checked, card.dataset.cellule);
+        else if(act==='modifier') formEl.innerHTML = formModifierSelection(checked);
         formEl.classList.add('open');
         formEl.dataset.selection = checked.join(',');
         bindSelectionFormEvents(formEl, act, card);
       });
     });
-
-    document.querySelectorAll('[data-delete-batch]').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        const batchId = btn.dataset.deleteBatch;
-        const card = btn.closest('.lot-card');
-        const count = card.querySelectorAll('.palox-item').length;
-        if(!confirm('Supprimer définitivement cette entrée ('+count+' palox) ? Cette action ne peut pas être annulée.')) return;
-        state.lots = state.lots.filter(l=>l.batchId!==batchId);
-        await saveState();
-        renderHeaderStats();
-        openLigneDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne, document.getElementById('detailPanel').dataset.filterProduit || undefined);
-        renderTab(currentTab);
-      });
-    });
-
-    document.querySelectorAll('[data-edit-toggle]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const batchId = btn.dataset.editToggle;
-        const card = btn.closest('.lot-card');
-        const formEl = document.getElementById('form-edit-'+batchId);
-        if(formEl.classList.contains('open')){ formEl.classList.remove('open'); formEl.innerHTML=''; return; }
-        const celluleId = card.dataset.cellule, ligneId = card.dataset.ligne;
-        const batch = batchesInLigne(celluleId, ligneId).find(b=>b.batchId===batchId);
-        if(!batch) return;
-        formEl.innerHTML = formEditBatch(batch);
-        formEl.classList.add('open');
-        bindEditBatchEvents(formEl, batch);
-      });
-    });
   }
 
-  function bindEditBatchEvents(formEl, batch){
-    const row = formEl.querySelector('.entree-row');
-    formEl.addEventListener('input', (ev)=>{
-      if(ev.target.matches('[data-f="nbPalox"]') || ev.target.matches('[data-f="lot"]') || ev.target.matches('[data-f="lot2"]')) refreshPaloxWeightInputs(row);
-    });
-    formEl.addEventListener('change', (ev)=>{
-      if(ev.target.matches('[data-f="mixte"]')) refreshPaloxWeightInputs(row);
-    });
-    formEl.querySelector('[data-cancel-edit]').addEventListener('click', ()=>{
-      formEl.classList.remove('open'); formEl.innerHTML='';
-    });
-    formEl.querySelector('[data-save-edit]').addEventListener('click', async ()=>{
-      const get = (f)=> row.querySelector('[data-f="'+f+'"]').value;
-      const produit = get('produit').trim();
-      const nbPalox = parseFloat(get('nbPalox'));
-      const msg = formEl.querySelector('#msg-edit-'+batch.batchId);
-      if(!produit){ msg.textContent = '✗ Le produit est obligatoire'; msg.className='msg err'; return; }
-      if(!nbPalox || nbPalox<1){ msg.textContent = '✗ Quantité invalide'; msg.className='msg err'; return; }
-      const count = Math.round(nbPalox);
-      const ligneObj = getLigne(batch.celluleId, batch.ligneId);
-      const usedElsewhere = ligneOccupied(batch.celluleId, batch.ligneId) - batch.paloxs.length;
-      if(usedElsewhere + count > ligneObj.capacite){
-        msg.textContent = '✗ Ne rentre pas dans cette ligne ('+(ligneObj.capacite-usedElsewhere)+' palox maximum)';
-        msg.className = 'msg err';
-        return;
-      }
-      const lotVal = get('lot').trim();
-      const lot2Val = get('lot2').trim();
-      const parcelle = get('parcelle').trim();
-      const calibre = get('calibre').trim();
-      const traitement = get('traitement').trim();
-      const dateEntree = get('dateEntree');
-      const commentaire = get('commentaire').trim();
-      const weightsEl = row.querySelector('.palox-weights');
-      const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
-
-      state.lots = state.lots.filter(l=>l.batchId!==batch.batchId);
-      for(let n=0;n<count;n++){
-        const { poids: poidsUnit, poidsLot2: poidsLot2Unit } = resolvePaloxWeight(paloxStates[n]);
-        state.lots.push({ id: uid(), celluleId: batch.celluleId, ligneId: batch.ligneId, batchId: batch.batchId,
-          produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree, commentaire });
-      }
-
-      await saveState();
-      renderHeaderStats();
-      openLigneDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne, document.getElementById('detailPanel').dataset.filterProduit || undefined);
-      renderTab(currentTab);
-    });
-  }
 
   function bindSelectionFormEvents(formEl, act, card){
     const destCelSel = formEl.querySelector('[data-f="destCellule"]');
@@ -964,14 +782,19 @@
         formEl.querySelector('[data-f="destLigne"]').innerHTML = ligneOptionsHtml(destCelSel.value);
       });
     }
+    if(act==='modifier'){
+      const row = formEl.querySelector('[data-modifier-row]');
+      const selectionCount = (formEl.dataset.selection||'').split(',').filter(Boolean).length;
+      formEl.addEventListener('input', (ev)=>{
+        if(ev.target.matches('[data-f="lot2"]')) refreshPaloxWeightInputs(row, selectionCount);
+      });
+    }
     formEl.querySelector('[data-cancel-selection]').addEventListener('click', ()=>{
       formEl.classList.remove('open'); formEl.innerHTML='';
     });
     formEl.querySelector('[data-confirm-selection]').addEventListener('click', async ()=>{
       const ids = (formEl.dataset.selection||'').split(',').filter(Boolean);
       const paloxs = ids.map(paloxById).filter(Boolean);
-      const date = formEl.querySelector('[data-f="date"]').value;
-      const comment = formEl.querySelector('[data-f="comment"]').value;
       const msg = formEl.querySelector('#msg-selection');
       if(paloxs.length===0){ msg.textContent = '✗ Sélection invalide'; msg.className='msg err'; return; }
       const first = paloxs[0];
@@ -979,10 +802,14 @@
       const poidsTotal = known.length ? known.reduce((s,p)=>s+paloxTotalPoids(p),0) : null;
 
       if(act==='sortie'){
+        const date = formEl.querySelector('[data-f="date"]').value;
+        const comment = formEl.querySelector('[data-f="comment"]').value;
         addTx('sortie', { quantite: paloxs.length, poids: poidsTotal, produit: first.produit, lot: first.lot, date, commentaire: comment, label: caseLabel(first.celluleId, first.ligneId) });
         const idSet = new Set(ids);
         state.lots = state.lots.filter(l=>!idSet.has(l.id));
-      } else {
+      } else if(act==='deplacer'){
+        const date = formEl.querySelector('[data-f="date"]').value;
+        const comment = formEl.querySelector('[data-f="comment"]').value;
         const destCelluleId = formEl.querySelector('[data-f="destCellule"]').value;
         const destLigneId = formEl.querySelector('[data-f="destLigne"]').value;
         const destLigneObj = getLigne(destCelluleId, destLigneId);
@@ -998,6 +825,28 @@
         paloxs.forEach(p=>{ p.celluleId = destCelluleId; p.ligneId = destLigneId; });
         addTx('deplacement', { quantite: paloxs.length, poids: poidsTotal, produit: first.produit, lot: first.lot, date, commentaire: comment,
           fromLabel: fromLabel, toLabel: caseLabel(destCelluleId, destLigneId) });
+      } else if(act==='modifier'){
+        const row = formEl.querySelector('[data-modifier-row]');
+        const get = (f)=> row.querySelector('[data-f="'+f+'"]').value;
+        const produit = get('produit').trim();
+        if(!produit){ msg.textContent = '✗ Le produit est obligatoire'; msg.className='msg err'; return; }
+        const lotVal = get('lot').trim();
+        const lot2Val = get('lot2').trim();
+        const parcelle = get('parcelle').trim();
+        const calibre = get('calibre').trim();
+        const traitement = get('traitement').trim();
+        const dateEntree = get('dateEntree');
+        const commentaire = get('commentaire').trim();
+        const weightsEl = row.querySelector('.palox-weights');
+        const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
+        const newBatchId = uid();
+        const idSet = new Set(ids);
+        state.lots = state.lots.filter(l=>!idSet.has(l.id));
+        paloxs.forEach((p,idx)=>{
+          const { poids: poidsUnit, poidsLot2: poidsLot2Unit } = resolvePaloxWeight(paloxStates[idx]);
+          state.lots.push({ id: p.id, celluleId: p.celluleId, ligneId: p.ligneId, batchId: newBatchId,
+            produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree, commentaire });
+        });
       }
       await saveState();
       renderHeaderStats();
@@ -1043,7 +892,7 @@
     bulkRowCounter = 0;
     const panel = document.getElementById('detailPanel');
     panel.innerHTML =
-      '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>Entrée groupée</h3><p>Ajoute du stock sur plusieurs lignes en une seule fois — une ligne de saisie par produit/emplacement.</p></div>'+
+      '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>Entrée</h3><p>Ajoute du stock — une ligne de saisie par produit/emplacement, sur une ou plusieurs lignes.</p></div>'+
       '<div class="detail-body">'+
         '<form id="bulkForm">'+
           '<div id="bulkRows">'+bulkRowHtml(0)+'</div>'+
@@ -1084,7 +933,6 @@
         const row = ev.target.closest('.entree-row');
         row.querySelector('[data-f="ligne"]').innerHTML = ligneOptionsHtml(ev.target.value);
       }
-      if(ev.target.matches('[data-f="mixte"]')) refreshPaloxWeightInputs(ev.target.closest('.entree-row'));
     });
 
     document.getElementById('bulkForm').addEventListener('submit', async (ev)=>{
