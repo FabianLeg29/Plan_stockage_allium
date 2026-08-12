@@ -1036,19 +1036,54 @@
   }
 
   // ---------- RECHERCHE ----------
-  function viewRecherche(){
-    return '<div class="card"><h2>Recherche de palox</h2><p class="sub">Recherche par produit, lot, parcelle, calibre ou traitement.</p>'+
-      '<div class="search-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'+
-      '<input type="text" id="searchInput" placeholder="ex : L070GA43, échalote, parcelle 12, RDF…" autofocus></div>'+
-      '<div id="searchResults">'+searchResultsHtml('')+'</div></div>';
+  function distinctValues(field){
+    const seen = {}, out = [];
+    state.lots.forEach(l=>{
+      const v = (l[field]||'').trim();
+      if(v && !seen[v]){ seen[v]=true; out.push(v); }
+    });
+    return out.sort((a,b)=>a.localeCompare(b, 'fr'));
   }
-  function searchResultsHtml(q){
-    q = (q||'').toLowerCase().trim();
+  function viewRecherche(){
+    const celluleOpts = state.cellules.map(c=>'<option value="'+c.id+'">'+escapeHtml(c.nom)+'</option>').join('');
+    const produitOpts = distinctValues('produit').map(p=>'<option value="'+escapeHtml(p)+'">'+escapeHtml(p)+'</option>').join('');
+    const calibreOpts = distinctValues('calibre').map(c=>'<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>').join('');
+    return '<div class="card"><h2>Consultation des stocks</h2><p class="sub">Filtre par cellule, produit, calibre ou lot, et/ou fais une recherche libre.</p>'+
+      '<div class="grid-form" style="margin-bottom:14px;">'+
+        '<label class="field">Cellule<select id="filterCellule"><option value="">Toutes</option>'+celluleOpts+'</select></label>'+
+        '<label class="field">Produit<select id="filterProduit"><option value="">Tous</option>'+produitOpts+'</select></label>'+
+        '<label class="field">Calibre<select id="filterCalibre"><option value="">Tous</option>'+calibreOpts+'</select></label>'+
+        '<label class="field">Lot<input type="text" id="filterLot" placeholder="ex : L070GA43"></label>'+
+      '</div>'+
+      '<div class="search-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'+
+      '<input type="text" id="searchInput" placeholder="recherche libre : parcelle, traitement…"></div>'+
+      '<div id="searchResults">'+searchResultsHtml({})+'</div></div>';
+  }
+  function currentSearchFilters(){
+    return {
+      q: (document.getElementById('searchInput')||{}).value || '',
+      celluleId: (document.getElementById('filterCellule')||{}).value || '',
+      produit: (document.getElementById('filterProduit')||{}).value || '',
+      calibre: (document.getElementById('filterCalibre')||{}).value || '',
+      lot: (document.getElementById('filterLot')||{}).value || ''
+    };
+  }
+  function refreshSearchResults(){
+    document.getElementById('searchResults').innerHTML = searchResultsHtml(currentSearchFilters());
+    bindLocateButtons();
+  }
+  function searchResultsHtml(filters){
+    filters = filters || {};
+    const q = (filters.q||'').toLowerCase().trim();
+    const lotText = (filters.lot||'').toLowerCase().trim();
     let batches = groupByBatch(state.lots);
-    if(q){
-      batches = batches.filter(b => [b.produit,b.lot,b.parcelle,b.calibre,b.traitement].some(f => (f||'').toLowerCase().includes(q)));
-    }
-    if(batches.length===0) return emptyState(q? "Aucun résultat" : "Commence à taper pour chercher", q? "Essaie un autre terme (produit, lot, parcelle, calibre, traitement)." : "Tous les lots enregistrés peuvent être retrouvés ici.");
+    if(filters.celluleId) batches = batches.filter(b=>b.celluleId===filters.celluleId);
+    if(filters.produit) batches = batches.filter(b=>b.produit===filters.produit);
+    if(filters.calibre) batches = batches.filter(b=>b.calibre===filters.calibre);
+    if(lotText) batches = batches.filter(b=>(b.lot||'').toLowerCase().includes(lotText));
+    if(q) batches = batches.filter(b => [b.produit,b.lot,b.parcelle,b.calibre,b.traitement].some(f => (f||'').toLowerCase().includes(q)));
+    const anyFilter = q || filters.celluleId || filters.produit || filters.calibre || lotText;
+    if(batches.length===0) return emptyState(anyFilter? "Aucun résultat" : "Aucun palox enregistré", anyFilter? "Essaie d'élargir tes critères." : "Filtre par cellule, produit, calibre, lot — ou tape une recherche libre.");
     const rows = batches.map(b=>{
       const summary = batchPoidsSummary(b);
       const poidsStr = summary.total>0 ? (fmt(summary.total)+' kg'+(summary.unknown>0?' (partiel)':'')) : '—';
@@ -1131,11 +1166,11 @@
       });
     }
     if(tab==='recherche'){
-      const input = document.getElementById('searchInput');
-      input.addEventListener('input', ()=>{
-        document.getElementById('searchResults').innerHTML = searchResultsHtml(input.value);
-        bindLocateButtons();
-      });
+      document.getElementById('searchInput').addEventListener('input', refreshSearchResults);
+      document.getElementById('filterCellule').addEventListener('change', refreshSearchResults);
+      document.getElementById('filterProduit').addEventListener('change', refreshSearchResults);
+      document.getElementById('filterCalibre').addEventListener('change', refreshSearchResults);
+      document.getElementById('filterLot').addEventListener('input', refreshSearchResults);
       bindLocateButtons();
     }
     if(tab==='cellules'){
