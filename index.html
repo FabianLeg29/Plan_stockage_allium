@@ -169,6 +169,7 @@
   .role-badge{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding: 5px 10px; border-radius:999px; }
   .role-badge.editor{ background: var(--green-soft); color: var(--green); }
   .role-badge.viewer{ background: var(--blue-soft); color: var(--blue); }
+  .role-badge.admin{ background: #8B5FBF; color: #fff; }
   .readonly-note{ background: var(--panel-2); border:1px dashed var(--line); border-radius:8px; padding:10px 12px; font-size:12.5px; color:var(--ink-soft); }
   .filter-bar{ background: var(--copper-soft); border-radius:8px; padding:8px 12px; font-size:12.5px; color: var(--ink); margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
   .consult-total{ background: var(--panel-2); border-radius:8px; padding:10px 14px; margin-top:12px; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
@@ -229,6 +230,7 @@
     <button data-tab="global">Stock global</button>
     <button data-tab="historique">Historique</button>
     <button data-tab="cellules" id="tabCellules">Cellules</button>
+    <button data-tab="comptes" id="tabComptes">Comptes</button>
   </nav>
 
   <div id="app"><div class="loading">Chargement du plan…</div></div>
@@ -257,6 +259,8 @@
   const db = firebase.firestore();
   const DOC_REF = db.collection('planStockage').doc('main');
   let currentRole = 'viewer';
+  function canManageStock(){ return currentRole==='editor' || currentRole==='admin'; }
+  function isAdmin(){ return currentRole==='admin'; }
   let unsubscribeSnapshot = null;
 
   // Chaque entrée de state.lots représente UN palox physique (pas un lot agrégé).
@@ -285,10 +289,10 @@
     unsubscribeSnapshot = DOC_REF.onSnapshot(async (snap)=>{
       if(!snap.exists){
         state = { cellules: [], lots: [], transactions: [] };
-        if(currentRole==='editor'){ seedDefault(); applyIncomingState(null); }
+        if(canManageStock()){ seedDefault(); applyIncomingState(null); }
         loaded = true;
         render();
-        if(currentRole==='editor') await saveState();
+        if(canManageStock()) await saveState();
         return;
       }
       if(isPanelOpen()) return;
@@ -346,7 +350,7 @@
     setTimeout(()=>URL.revokeObjectURL(url), 2000);
   }
   function importBackup(file){
-    if(currentRole!=='editor'){ alert('Réservé aux comptes de gestion.'); return; }
+    if(!canManageStock()){ alert('Réservé aux comptes de gestion.'); return; }
     const reader = new FileReader();
     reader.onload = async (ev)=>{
       try{
@@ -491,17 +495,20 @@
     document.getElementById('headerStats').innerHTML =
       '<div class="stat-pill"><span class="dot green"></span>Palox <b>'+fmt(totalPalox())+'</b></div>'+
       '<div class="stat-pill"><span class="dot"></span>Cellules <b>'+state.cellules.length+'</b></div>'+
-      '<span class="role-badge '+currentRole+'">'+(currentRole==='editor'?'Gestion':'Consultation')+'</span>'+
+      '<span class="role-badge '+currentRole+'">'+(currentRole==='admin'?'Admin':currentRole==='editor'?'Gestion':'Consultation')+'</span>'+
       '<span id="saveStatus" style="font-size:11.5px;font-weight:600;display:none;"></span>'+
       '<button class="refresh-btn" id="refreshBtn" title="Actualiser">⟳</button>'+
       '<button class="btn btn-ghost btn-sm" id="logoutBtn">Déconnexion</button>';
     document.getElementById('refreshBtn').addEventListener('click', manualRefresh);
     document.getElementById('logoutBtn').addEventListener('click', ()=>auth.signOut());
     const tabCellules = document.getElementById('tabCellules');
-    if(tabCellules) tabCellules.style.display = currentRole==='editor' ? '' : 'none';
+    if(tabCellules) tabCellules.style.display = canManageStock() ? '' : 'none';
+    const tabComptes = document.getElementById('tabComptes');
+    if(tabComptes) tabComptes.style.display = isAdmin() ? '' : 'none';
   }
   function renderTab(tab){
-    if(tab==='cellules' && currentRole!=='editor') tab = 'stockage';
+    if(tab==='cellules' && !canManageStock()) tab = 'stockage';
+    if(tab==='comptes' && !isAdmin()) tab = 'stockage';
     currentTab = tab;
     document.querySelectorAll('nav.tabs button').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
     const app = document.getElementById('app');
@@ -510,12 +517,13 @@
     if(tab==='global') app.innerHTML = viewGlobal();
     if(tab==='historique') app.innerHTML = viewHistorique();
     if(tab==='cellules') app.innerHTML = viewCellules();
+    if(tab==='comptes') app.innerHTML = viewComptes();
     bindTabEvents(tab);
   }
 
   function viewStockage(){
     if(state.cellules.length===0){
-      return '<div class="card">'+emptyState("Aucune cellule configurée", currentRole==='editor' ? "Crée une cellule dans l'onglet « Cellules » pour commencer." : "Aucune donnée pour le moment — contacte un compte de gestion.")+'</div>';
+      return '<div class="card">'+emptyState("Aucune cellule configurée", canManageStock() ? "Crée une cellule dans l'onglet « Cellules » pour commencer." : "Aucune donnée pour le moment — contacte un compte de gestion.")+'</div>';
     }
     if(!currentCelluleId || !getCellule(currentCelluleId)) currentCelluleId = state.cellules[0].id;
     const c = getCellule(currentCelluleId);
@@ -525,7 +533,7 @@
       return '<button data-cellule="'+cc.id+'" class="'+(cc.id===c.id?'active':'')+'">'+escapeHtml(cc.nom)+' <span class="n">('+n+')</span></button>';
     }).join('');
 
-    const toolbar = currentRole==='editor' ?
+    const toolbar = canManageStock() ?
       '<div class="stockage-toolbar">'+
         '<button class="btn btn-green btn-sm" id="openBulkEntree">+ Entrée</button>'+
       '</div>' : '';
@@ -586,7 +594,7 @@
       '</div>'+
       '<div class="palox-list">'+rows+'</div>'+
       '<div class="batch-summary">'+batch.paloxs.length+' palox · '+poidsStr+'</div>'+
-      (currentRole==='editor' ? (
+      (canManageStock() ? (
         '<div class="lot-actions">'+
           '<button class="btn btn-sm btn-warn" data-act="sortie" data-batch="'+batch.batchId+'">Sortir la sélection</button>'+
           '<button class="btn btn-sm btn-blue" data-act="deplacer" data-batch="'+batch.batchId+'">Déplacer la sélection</button>'+
@@ -616,7 +624,7 @@
     const filterBarHtml = filterProduit ?
       '<div class="filter-bar">Filtré sur <b>'+escapeHtml(filterProduit)+'</b><button type="button" class="btn btn-ghost btn-sm" id="clearFilter">✕ Voir toute la ligne</button></div>' : '';
 
-    const addSectionHtml = currentRole==='editor' ?
+    const addSectionHtml = canManageStock() ?
         '<p style="font-size:12px;color:var(--ink-soft);">'+(l.capacite-occ)+' palox restants dans cette ligne. Pour ajouter du stock, utilise le bouton « + Entrée » dans l\'onglet Stockage.</p>'
       : '<div class="readonly-note">Consultation seule — contacte un compte de gestion pour modifier cette ligne.</div>';
 
@@ -1152,6 +1160,59 @@
       '<button class="btn btn-copper" id="addCellule" style="margin-top:6px;">+ Nouvelle cellule</button></div>';
   }
 
+  // ---------- COMPTES (admin) ----------
+  function viewComptes(){
+    return '<div class="card"><h2>Comptes</h2>'+
+      '<p class="sub">Comptes autorisés et leur rôle. La création d\'un nouveau compte (email + mot de passe) se fait toujours depuis la console Firebase ; ajoute-le ensuite ici avec son email et son rôle pour qu\'il apparaisse dans cette liste.</p>'+
+      '<div id="comptesList"><div class="loading" style="padding:24px 0;">Chargement des comptes…</div></div>'+
+    '</div>';
+  }
+  async function loadComptesList(){
+    const el = document.getElementById('comptesList');
+    if(!el) return;
+    try{
+      const snap = await db.collection('users').get();
+      const rows = [];
+      snap.forEach(doc=>{
+        const d = doc.data() || {};
+        rows.push({ uid: doc.id, email: d.email || '(email non renseigné — uid : '+doc.id+')', role: (d.role==='admin'||d.role==='editor') ? d.role : 'viewer' });
+      });
+      if(rows.length===0){
+        el.innerHTML = emptyState("Aucun compte trouvé", "Ajoute un document dans la collection Firestore « users » pour chaque compte, avec ses champs email et role.");
+        return;
+      }
+      rows.sort((a,b)=>a.email.localeCompare(b.email,'fr'));
+      const selfUid = auth.currentUser ? auth.currentUser.uid : null;
+      const roleOpts = (current)=> ['viewer','editor','admin'].map(r=>{
+        const label = r==='admin' ? 'Admin' : r==='editor' ? 'Gestion' : 'Consultation';
+        return '<option value="'+r+'" '+(r===current?'selected':'')+'>'+label+'</option>';
+      }).join('');
+      const tableRows = rows.map(r=>{
+        const isSelf = r.uid===selfUid;
+        return '<tr><td>'+escapeHtml(r.email)+(isSelf? ' <span class="mono" style="color:var(--ink-soft);">(toi)</span>':'')+'</td>'+
+          '<td><select data-role-select="'+r.uid+'" '+(isSelf?'disabled':'')+'>'+roleOpts(r.role)+'</select></td>'+
+          '<td><span class="msg" id="msg-role-'+r.uid+'"></span></td></tr>';
+      }).join('');
+      el.innerHTML = '<div class="table-scroll"><table class="data"><thead><tr><th>Email</th><th>Rôle</th><th></th></tr></thead><tbody>'+tableRows+'</tbody></table></div>'+
+        '<p class="sub" style="margin-top:10px;">Tu ne peux pas changer ton propre rôle depuis cette liste, pour éviter de te bloquer toi-même par erreur.</p>';
+      document.querySelectorAll('[data-role-select]').forEach(sel=>{
+        sel.addEventListener('change', async ()=>{
+          const uid = sel.dataset.roleSelect;
+          const newRole = sel.value;
+          const msg = document.getElementById('msg-role-'+uid);
+          try{
+            await db.collection('users').doc(uid).set({ role: newRole }, { merge: true });
+            if(msg){ msg.textContent = '✓ mis à jour'; msg.className = 'msg ok'; }
+          }catch(e){
+            if(msg){ msg.textContent = '✗ '+e.message; msg.className = 'msg err'; }
+          }
+        });
+      });
+    }catch(e){
+      el.innerHTML = '<p class="msg err">✗ Impossible de charger les comptes : '+escapeHtml(e.message)+'</p>';
+    }
+  }
+
   function bindTabEvents(tab){
     if(tab==='stockage'){
       document.querySelectorAll('#stockageCelluleTabs button').forEach(b=>{
@@ -1247,6 +1308,9 @@
         await saveState(); renderTab('cellules'); renderHeaderStats();
       });
     }
+    if(tab==='comptes'){
+      loadComptesList();
+    }
   }
 
   document.getElementById('tabs').addEventListener('click', (ev)=>{
@@ -1272,7 +1336,8 @@
     if(user){
       try{
         const roleDoc = await db.collection('users').doc(user.uid).get();
-        currentRole = (roleDoc.exists && roleDoc.data().role==='editor') ? 'editor' : 'viewer';
+        const r = roleDoc.exists ? roleDoc.data().role : null;
+        currentRole = (r==='admin' || r==='editor') ? r : 'viewer';
       }catch(e){ currentRole = 'viewer'; }
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('mainWrap').style.display = '';

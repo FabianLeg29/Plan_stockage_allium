@@ -15,19 +15,25 @@ L'application (`index.html`) a besoin d'un projet Firebase pour l'authentificati
 Dans **Firestore Database > Règles**, colle le contenu du fichier `firestore.rules` de ce dépôt, puis publie.
 
 Ces règles garantissent que :
-- seuls les comptes connectés peuvent lire les données ;
-- seuls les comptes avec le rôle `editor` peuvent écrire (créer/modifier/supprimer un palox, changer la config des cellules) ;
-- personne ne peut modifier son propre rôle depuis l'application (uniquement via la console Firebase).
+- seuls les comptes connectés peuvent lire les données du plan de stockage ;
+- seuls les comptes avec le rôle `editor` ou `admin` peuvent écrire (créer/modifier/supprimer un palox, changer la config des cellules) ;
+- seul un compte `admin` peut lire la liste complète des comptes (collection `users`) et changer le rôle d'un autre compte ;
+- personne ne peut modifier son propre rôle, même un admin (pour éviter de se bloquer soi-même par erreur) — un changement sur son propre compte doit toujours passer par la console Firebase.
+
+Il y a trois rôles possibles :
+- `admin` — tout ce que fait `editor`, plus l'accès à l'onglet "Comptes" pour voir la liste des comptes et changer leur rôle.
+- `editor` — gestion complète du stock (lecture/écriture).
+- `viewer` — consultation seule. C'est le rôle par défaut si aucun document `users/{uid}` n'existe pour ce compte.
 
 ## 3. Créer les comptes utilisateurs
 
 1. Dans **Authentication > Users**, clique sur **Ajouter un utilisateur** pour chaque personne (email + mot de passe temporaire — elle pourra le changer plus tard via "mot de passe oublié" si tu actives cette option).
 2. Note l'**UID** généré pour chaque personne.
-3. Dans **Firestore Database > Données**, crée une collection `users`. Pour chaque personne, crée un document dont l'**ID du document est son UID**, avec un champ :
-   - `role` (string) = `"editor"` pour la gestion (lecture/écriture)
-   - `role` (string) = `"viewer"` pour la consultation seule
+3. Dans **Firestore Database > Données**, crée une collection `users`. Pour chaque personne, crée un document dont l'**ID du document est son UID**, avec deux champs :
+   - `email` (string) — son adresse email, utilisée uniquement pour l'afficher dans l'onglet "Comptes"
+   - `role` (string) = `"admin"`, `"editor"` ou `"viewer"`
 
-Sans document dans `users`, un compte connecté est traité comme `viewer` par défaut.
+Crée au moins un compte `admin` de cette façon (le tout premier doit être créé à la main — ensuite, les admins peuvent changer les rôles des autres comptes directement depuis l'onglet "Comptes" de l'application, sans repasser par la console).
 
 ## 4. Domaines autorisés
 
@@ -35,4 +41,4 @@ Dans **Authentication > Settings > Authorized domains**, ajoute le domaine où `
 
 ## 5. Tester
 
-Ouvre `index.html` dans un navigateur, connecte-toi avec un compte `editor` : tu dois voir l'onglet "Cellules" et pouvoir ajouter/sortir/déplacer des palox. Avec un compte `viewer`, ces actions doivent être masquées et l'onglet "Cellules" absent.
+Ouvre `index.html` dans un navigateur, connecte-toi avec un compte `editor` : tu dois voir l'onglet "Cellules" et pouvoir ajouter/sortir/déplacer des palox, mais pas l'onglet "Comptes". Avec un compte `admin`, tu dois en plus voir l'onglet "Comptes" et pouvoir changer le rôle des autres comptes. Avec un compte `viewer`, les actions de gestion doivent être masquées et les onglets "Cellules"/"Comptes" absents.
