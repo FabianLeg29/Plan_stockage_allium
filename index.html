@@ -594,10 +594,34 @@
         '<div class="lot-actions">'+
           '<button class="btn btn-sm btn-warn" data-act="sortie" data-batch="'+batch.batchId+'">Sortir la sélection</button>'+
           '<button class="btn btn-sm btn-blue" data-act="deplacer" data-batch="'+batch.batchId+'">Déplacer la sélection</button>'+
+          '<button class="btn btn-sm btn-ghost" data-edit-toggle="'+batch.batchId+'">Modifier cette entrée</button>'+
+          '<button class="btn btn-sm btn-ghost" data-delete-batch="'+batch.batchId+'">Supprimer cette entrée</button>'+
         '</div>'+
         '<div class="inline-form" id="form-sortie-'+batch.batchId+'"></div>'+
-        '<div class="inline-form" id="form-deplacer-'+batch.batchId+'"></div>'
+        '<div class="inline-form" id="form-deplacer-'+batch.batchId+'"></div>'+
+        '<div class="inline-form" id="form-edit-'+batch.batchId+'"></div>'
       ) : '')+
+    '</div>';
+  }
+  function formEditBatch(batch){
+    const existing = batch.paloxs.map(p=>({ poids: p.poids, mixte: p.poidsLot2!=null, poidsLot2: p.poidsLot2 }));
+    const hasLot2 = !!(batch.lot2 && batch.lot2.trim());
+    return '<div class="entree-row" data-edit-batch="'+batch.batchId+'">'+
+      '<div class="grid-form two">'+
+        '<label class="field">Produit<input type="text" data-f="produit" value="'+escapeHtml(batch.produit||'')+'" required></label>'+
+        '<label class="field">Lot<input type="text" data-f="lot" value="'+escapeHtml(batch.lot||'')+'"></label>'+
+        '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" value="'+escapeHtml(batch.lot2||'')+'"></label>'+
+        '<label class="field">Parcelle<input type="text" data-f="parcelle" value="'+escapeHtml(batch.parcelle||'')+'"></label>'+
+        '<label class="field">Calibre<input type="text" data-f="calibre" value="'+escapeHtml(batch.calibre||'')+'"></label>'+
+        '<label class="field">Traitement<input type="text" data-f="traitement" value="'+escapeHtml(batch.traitement||'')+'"></label>'+
+        '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="'+batch.paloxs.length+'" required></label>'+
+        '<label class="field">Date<input type="date" data-f="dateEntree" value="'+escapeHtml(batch.dateEntree||today())+'"></label>'+
+        '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" value="'+escapeHtml(batch.commentaire||'')+'"></label>'+
+      '</div>'+
+      '<div class="hint" style="display:block;margin-top:10px;">Poids par palox (kg) — optionnel, laisse vide si inconnu</div>'+
+      '<div class="palox-weights">'+paloxWeightInputsHtml(batch.paloxs.length, existing, hasLot2, batch.lot, batch.lot2)+'</div>'+
+      '<div class="btn-row"><button type="button" class="btn btn-copper btn-sm" data-save-edit="'+batch.batchId+'">Enregistrer les modifications</button>'+
+      '<button type="button" class="btn btn-ghost btn-sm" data-cancel-edit="'+batch.batchId+'">Annuler</button><span class="msg" id="msg-edit-'+batch.batchId+'"></span></div>'+
     '</div>';
   }
 
@@ -851,6 +875,85 @@
         formEl.dataset.selection = checked.join(',');
         bindSelectionFormEvents(formEl, act, card);
       });
+    });
+
+    document.querySelectorAll('[data-delete-batch]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const batchId = btn.dataset.deleteBatch;
+        const card = btn.closest('.lot-card');
+        const count = card.querySelectorAll('.palox-item').length;
+        if(!confirm('Supprimer définitivement cette entrée ('+count+' palox) ? Cette action ne peut pas être annulée.')) return;
+        state.lots = state.lots.filter(l=>l.batchId!==batchId);
+        await saveState();
+        renderHeaderStats();
+        openLigneDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne, document.getElementById('detailPanel').dataset.filterProduit || undefined);
+        renderTab(currentTab);
+      });
+    });
+
+    document.querySelectorAll('[data-edit-toggle]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const batchId = btn.dataset.editToggle;
+        const card = btn.closest('.lot-card');
+        const formEl = document.getElementById('form-edit-'+batchId);
+        if(formEl.classList.contains('open')){ formEl.classList.remove('open'); formEl.innerHTML=''; return; }
+        const celluleId = card.dataset.cellule, ligneId = card.dataset.ligne;
+        const batch = batchesInLigne(celluleId, ligneId).find(b=>b.batchId===batchId);
+        if(!batch) return;
+        formEl.innerHTML = formEditBatch(batch);
+        formEl.classList.add('open');
+        bindEditBatchEvents(formEl, batch);
+      });
+    });
+  }
+
+  function bindEditBatchEvents(formEl, batch){
+    const row = formEl.querySelector('.entree-row');
+    formEl.addEventListener('input', (ev)=>{
+      if(ev.target.matches('[data-f="nbPalox"]') || ev.target.matches('[data-f="lot"]') || ev.target.matches('[data-f="lot2"]')) refreshPaloxWeightInputs(row);
+    });
+    formEl.addEventListener('change', (ev)=>{
+      if(ev.target.matches('[data-f="mixte"]')) refreshPaloxWeightInputs(row);
+    });
+    formEl.querySelector('[data-cancel-edit]').addEventListener('click', ()=>{
+      formEl.classList.remove('open'); formEl.innerHTML='';
+    });
+    formEl.querySelector('[data-save-edit]').addEventListener('click', async ()=>{
+      const get = (f)=> row.querySelector('[data-f="'+f+'"]').value;
+      const produit = get('produit').trim();
+      const nbPalox = parseFloat(get('nbPalox'));
+      const msg = formEl.querySelector('#msg-edit-'+batch.batchId);
+      if(!produit){ msg.textContent = '✗ Le produit est obligatoire'; msg.className='msg err'; return; }
+      if(!nbPalox || nbPalox<1){ msg.textContent = '✗ Quantité invalide'; msg.className='msg err'; return; }
+      const count = Math.round(nbPalox);
+      const ligneObj = getLigne(batch.celluleId, batch.ligneId);
+      const usedElsewhere = ligneOccupied(batch.celluleId, batch.ligneId) - batch.paloxs.length;
+      if(usedElsewhere + count > ligneObj.capacite){
+        msg.textContent = '✗ Ne rentre pas dans cette ligne ('+(ligneObj.capacite-usedElsewhere)+' palox maximum)';
+        msg.className = 'msg err';
+        return;
+      }
+      const lotVal = get('lot').trim();
+      const lot2Val = get('lot2').trim();
+      const parcelle = get('parcelle').trim();
+      const calibre = get('calibre').trim();
+      const traitement = get('traitement').trim();
+      const dateEntree = get('dateEntree');
+      const commentaire = get('commentaire').trim();
+      const weightsEl = row.querySelector('.palox-weights');
+      const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
+
+      state.lots = state.lots.filter(l=>l.batchId!==batch.batchId);
+      for(let n=0;n<count;n++){
+        const { poids: poidsUnit, poidsLot2: poidsLot2Unit } = resolvePaloxWeight(paloxStates[n]);
+        state.lots.push({ id: uid(), celluleId: batch.celluleId, ligneId: batch.ligneId, batchId: batch.batchId,
+          produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree, commentaire });
+      }
+
+      await saveState();
+      renderHeaderStats();
+      openLigneDetail(document.getElementById('detailPanel').dataset.cellule, document.getElementById('detailPanel').dataset.ligne, document.getElementById('detailPanel').dataset.filterProduit || undefined);
+      renderTab(currentTab);
     });
   }
 
