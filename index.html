@@ -122,9 +122,11 @@
   .inline-form.open{ display:block; }
   .entree-row{ border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:10px; background:#fff; }
   .palox-weights{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
-  .palox-weights .pw-item{ display:flex; flex-direction:column; gap:3px; }
-  .palox-weights .pw-item span{ font-size:9.5px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; text-transform:uppercase; letter-spacing:.03em; }
-  .palox-weights .pw-item input{ width:76px; font-family:'IBM Plex Mono'; font-size:12.5px; padding:6px 6px; border:1px solid var(--line); border-radius:6px; }
+  .palox-weights .pw-item{ display:flex; flex-direction:column; gap:4px; background:#fff; border:1px solid var(--line); border-radius:8px; padding:7px; min-width:88px; }
+  .palox-weights .pw-item > span{ font-size:9.5px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; text-transform:uppercase; letter-spacing:.03em; }
+  .palox-weights .pw-item input[type=number]{ width:100%; font-family:'IBM Plex Mono'; font-size:12.5px; padding:6px 6px; border:1px solid var(--line); border-radius:6px; }
+  .pw-mixte-toggle{ display:flex; align-items:center; gap:5px; font-size:10px; color:var(--ink-soft); cursor:pointer; white-space:nowrap; }
+  .pw-mixte-toggle input{ width:auto; margin:0; }
   .selection-recap{ font-size:12.5px; color:var(--ink-soft); margin-bottom:10px; background:var(--panel); border-radius:6px; padding:8px 10px; }
 
   .divider-label{ font-family:'IBM Plex Mono', monospace; font-size: 10.5px; font-weight:600; color: var(--ink-soft); text-transform:uppercase; letter-spacing: 0.08em; margin: 14px 0 10px; display:flex; align-items:center; gap:10px; }
@@ -466,9 +468,13 @@
     return order.map(k=>map[k]);
   }
   function batchesInLigne(celluleId, ligneId){ return groupByBatch(lotsInLigne(celluleId, ligneId)); }
+  function paloxTotalPoids(p){
+    if(p.poids==null && p.poidsLot2==null) return null;
+    return (p.poids||0) + (p.poidsLot2||0);
+  }
   function batchPoidsSummary(batch){
-    const known = batch.paloxs.filter(p=>p.poids!=null);
-    const total = known.reduce((s,p)=>s+p.poids,0);
+    const known = batch.paloxs.filter(p=>paloxTotalPoids(p)!=null);
+    const total = known.reduce((s,p)=>s+paloxTotalPoids(p),0);
     const unknown = batch.paloxs.length - known.length;
     return { total, unknown };
   }
@@ -564,7 +570,14 @@
       (fmt(summary.total)+' kg connus ('+summary.unknown+' palox sans poids renseigné)') :
       (fmt(summary.total)+' kg');
     const rows = batch.paloxs.map((p,idx)=>{
-      return '<label class="palox-item"><input type="checkbox" data-palox="'+p.id+'"> Palox '+(idx+1)+' — '+(p.poids!=null? fmt(p.poids)+' kg':'poids inconnu')+'</label>';
+      let poidsLabel;
+      if(p.poidsLot2!=null){
+        const tot = paloxTotalPoids(p);
+        poidsLabel = (p.poids!=null? fmt(p.poids):'?')+' kg (lot '+escapeHtml(batch.lot||'1')+') + '+fmt(p.poidsLot2)+' kg (lot '+escapeHtml(batch.lot2||'2')+')'+(tot!=null?' = '+fmt(tot)+' kg':'');
+      } else {
+        poidsLabel = p.poids!=null? fmt(p.poids)+' kg':'poids inconnu';
+      }
+      return '<label class="palox-item"><input type="checkbox" data-palox="'+p.id+'"> Palox '+(idx+1)+' — '+poidsLabel+'</label>';
     }).join('');
     return '<div class="lot-card" style="border-left-color:'+colorForProduit(batch.produit)+'" data-batch="'+batch.batchId+'" data-cellule="'+batch.celluleId+'" data-ligne="'+batch.ligneId+'" data-produit="'+escapeHtml((batch.produit||'').toLowerCase())+'">'+
       '<div class="lp-title">'+escapeHtml(batch.produit)+'</div>'+
@@ -637,22 +650,53 @@
     refetchState();
   }
 
-  function paloxWeightInputsHtml(count, existing){
+  function paloxWeightInputsHtml(count, existing, hasLot2, lot1Label, lot2Label){
     existing = existing || [];
     let html = '';
     for(let i=0;i<count;i++){
-      const val = existing[i]!=null ? existing[i] : '';
-      html += '<div class="pw-item"><span>'+(count>1? 'Palox '+(i+1) : 'Poids')+'</span><input type="number" min="0" step="0.01" data-f="poidsIndividuel" data-idx="'+i+'" value="'+val+'"></div>';
+      const data = existing[i] || {};
+      const mixte = !!(hasLot2 && data.mixte);
+      html += '<div class="pw-item">'+
+        '<span>'+(count>1? 'Palox '+(i+1) : 'Poids')+'</span>'+
+        '<input type="number" min="0" step="0.01" data-f="poidsIndividuel" data-idx="'+i+'" value="'+(data.poids!=null?data.poids:'')+'" placeholder="'+(mixte? escapeHtml(lot1Label||'Lot 1')+' kg' : 'kg')+'">'+
+        (hasLot2 ? (
+          '<label class="pw-mixte-toggle"><input type="checkbox" data-f="mixte" data-idx="'+i+'" '+(mixte?'checked':'')+'> palox mixte</label>'+
+          '<input type="number" min="0" step="0.01" data-f="poidsLot2Individuel" data-idx="'+i+'" value="'+(data.poidsLot2!=null?data.poidsLot2:'')+'" placeholder="'+escapeHtml(lot2Label||'Lot 2')+' kg" style="display:'+(mixte?'block':'none')+';">'
+        ) : '')+
+      '</div>';
     }
     return html;
   }
+  function resolvePaloxWeight(paloxState){
+    paloxState = paloxState || {};
+    const poids = paloxState.poids!=null ? parseFloat(paloxState.poids) : null;
+    const poidsLot2 = (paloxState.mixte && paloxState.poidsLot2!=null) ? parseFloat(paloxState.poidsLot2) : null;
+    return { poids, poidsLot2 };
+  }
+  function readPaloxWeightsState(weightsEl){
+    return Array.from(weightsEl.querySelectorAll('.pw-item')).map(item=>{
+      const poidsInp = item.querySelector('[data-f="poidsIndividuel"]');
+      const mixteInp = item.querySelector('[data-f="mixte"]');
+      const lot2Inp = item.querySelector('[data-f="poidsLot2Individuel"]');
+      return {
+        poids: poidsInp && poidsInp.value!==''? poidsInp.value : null,
+        mixte: mixteInp ? mixteInp.checked : false,
+        poidsLot2: lot2Inp && lot2Inp.value!==''? lot2Inp.value : null
+      };
+    });
+  }
   function refreshPaloxWeightInputs(row){
     const nbInput = row.querySelector('[data-f="nbPalox"]');
+    const lot2Input = row.querySelector('[data-f="lot2"]');
+    const lotInput = row.querySelector('[data-f="lot"]');
     const weightsEl = row.querySelector('.palox-weights');
     if(!nbInput || !weightsEl) return;
-    const existing = Array.from(weightsEl.querySelectorAll('[data-f="poidsIndividuel"]')).map(inp=>inp.value!==''? inp.value : null);
+    const existing = readPaloxWeightsState(weightsEl);
     const count = Math.min(500, Math.max(1, Math.round(parseFloat(nbInput.value)||1)));
-    weightsEl.innerHTML = paloxWeightInputsHtml(count, existing);
+    const hasLot2 = !!(lot2Input && lot2Input.value.trim());
+    const lot1Label = lotInput ? lotInput.value.trim() : '';
+    const lot2Label = lot2Input ? lot2Input.value.trim() : '';
+    weightsEl.innerHTML = paloxWeightInputsHtml(count, existing, hasLot2, lot1Label, lot2Label);
   }
   function entreeRowHtml(idx){
     return '<div class="entree-row" data-row-idx="'+idx+'">'+
@@ -685,19 +729,20 @@
   function collectPendingRowInputs(container){
     return Array.from(container.querySelectorAll('.entree-row')).map(row=>{
       const get = (f)=> row.querySelector('[data-f="'+f+'"]').value;
-      const poidsList = Array.from(row.querySelectorAll('[data-f="poidsIndividuel"]')).map(inp=> inp.value ? parseFloat(inp.value) : null);
+      const weightsEl = row.querySelector('.palox-weights');
+      const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
       return {
         produit: get('produit').trim(), lot: get('lot').trim(), lot2: get('lot2').trim(), parcelle: get('parcelle').trim(),
         calibre: get('calibre').trim(), traitement: get('traitement').trim(),
-        nbPalox: parseFloat(get('nbPalox')), poidsList, commentaire: get('commentaire').trim()
+        nbPalox: parseFloat(get('nbPalox')), paloxStates, commentaire: get('commentaire').trim()
       };
     });
   }
 
   function formSortieSelection(ids){
     const paloxs = ids.map(paloxById).filter(Boolean);
-    const known = paloxs.filter(p=>p.poids!=null);
-    const total = known.reduce((s,p)=>s+p.poids,0);
+    const known = paloxs.filter(p=>paloxTotalPoids(p)!=null);
+    const total = known.reduce((s,p)=>s+paloxTotalPoids(p),0);
     const recap = paloxs.length+' palox sélectionné(s) · '+fmt(total)+' kg'+(known.length<paloxs.length? ' ('+(paloxs.length-known.length)+' sans poids connu)':'');
     return '<div class="selection-recap">'+recap+'</div>'+
       '<div class="grid-form two">'+
@@ -709,8 +754,8 @@
   }
   function formDeplacerSelection(ids, srcCelluleId){
     const paloxs = ids.map(paloxById).filter(Boolean);
-    const known = paloxs.filter(p=>p.poids!=null);
-    const total = known.reduce((s,p)=>s+p.poids,0);
+    const known = paloxs.filter(p=>paloxTotalPoids(p)!=null);
+    const total = known.reduce((s,p)=>s+paloxTotalPoids(p),0);
     const recap = paloxs.length+' palox sélectionné(s) · '+fmt(total)+' kg'+(known.length<paloxs.length? ' ('+(paloxs.length-known.length)+' sans poids connu)':'');
     const c0 = getCellule(srcCelluleId);
     return '<div class="selection-recap">'+recap+'</div>'+
@@ -742,7 +787,10 @@
         if(ev.target.matches('[data-remove-row]')) ev.target.closest('.entree-row').remove();
       });
       document.getElementById('entreeRows').addEventListener('input', (ev)=>{
-        if(ev.target.matches('[data-f="nbPalox"]')) refreshPaloxWeightInputs(ev.target.closest('.entree-row'));
+        if(ev.target.matches('[data-f="nbPalox"]') || ev.target.matches('[data-f="lot"]') || ev.target.matches('[data-f="lot2"]')) refreshPaloxWeightInputs(ev.target.closest('.entree-row'));
+      });
+      document.getElementById('entreeRows').addEventListener('change', (ev)=>{
+        if(ev.target.matches('[data-f="mixte"]')) refreshPaloxWeightInputs(ev.target.closest('.entree-row'));
       });
 
       fe.addEventListener('submit', async (ev)=>{
@@ -767,10 +815,10 @@
           const batchId = uid();
           const poidsKnown = [];
           for(let n=0;n<count;n++){
-            const poidsUnit = row.poidsList[n]!=null ? row.poidsList[n] : null;
-            if(poidsUnit!=null) poidsKnown.push(poidsUnit);
+            const { poids: poidsUnit, poidsLot2: poidsLot2Unit } = resolvePaloxWeight(row.paloxStates[n]);
+            if(poidsUnit!=null || poidsLot2Unit!=null) poidsKnown.push((poidsUnit||0) + (poidsLot2Unit||0));
             state.lots.push({ id: uid(), celluleId, ligneId, batchId, produit: row.produit, lot: row.lot, lot2: row.lot2, parcelle: row.parcelle,
-              calibre: row.calibre, traitement: row.traitement, poids: poidsUnit, dateEntree: dateVal, commentaire: row.commentaire });
+              calibre: row.calibre, traitement: row.traitement, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree: dateVal, commentaire: row.commentaire });
           }
           const poidsTotal = poidsKnown.length ? poidsKnown.reduce((a,b)=>a+b,0) : null;
           addTx('entree', { quantite: count, poids: poidsTotal, produit: row.produit, lot: row.lot, lot2: row.lot2, date: dateVal, commentaire: row.commentaire, label: caseLabel(celluleId,ligneId) });
@@ -824,8 +872,8 @@
       const msg = formEl.querySelector('#msg-selection');
       if(paloxs.length===0){ msg.textContent = '✗ Sélection invalide'; msg.className='msg err'; return; }
       const first = paloxs[0];
-      const known = paloxs.filter(p=>p.poids!=null);
-      const poidsTotal = known.length ? known.reduce((s,p)=>s+p.poids,0) : null;
+      const known = paloxs.filter(p=>paloxTotalPoids(p)!=null);
+      const poidsTotal = known.length ? known.reduce((s,p)=>s+paloxTotalPoids(p),0) : null;
 
       if(act==='sortie'){
         addTx('sortie', { quantite: paloxs.length, poids: poidsTotal, produit: first.produit, lot: first.lot, date, commentaire: comment, label: caseLabel(first.celluleId, first.ligneId) });
@@ -926,13 +974,14 @@
       if(ev.target.matches('[data-remove-row]')) ev.target.closest('.entree-row').remove();
     });
     rowsEl.addEventListener('input', (ev)=>{
-      if(ev.target.matches('[data-f="nbPalox"]')) refreshPaloxWeightInputs(ev.target.closest('.entree-row'));
+      if(ev.target.matches('[data-f="nbPalox"]') || ev.target.matches('[data-f="lot"]') || ev.target.matches('[data-f="lot2"]')) refreshPaloxWeightInputs(ev.target.closest('.entree-row'));
     });
     rowsEl.addEventListener('change', (ev)=>{
       if(ev.target.matches('[data-f="cellule"]')){
         const row = ev.target.closest('.entree-row');
         row.querySelector('[data-f="ligne"]').innerHTML = ligneOptionsHtml(ev.target.value);
       }
+      if(ev.target.matches('[data-f="mixte"]')) refreshPaloxWeightInputs(ev.target.closest('.entree-row'));
     });
 
     document.getElementById('bulkForm').addEventListener('submit', async (ev)=>{
@@ -958,14 +1007,15 @@
         const parcelle = row.querySelector('[data-f="parcelle"]').value.trim();
         const calibre = row.querySelector('[data-f="calibre"]').value.trim();
         const traitement = row.querySelector('[data-f="traitement"]').value.trim();
-        const poidsList = Array.from(row.querySelectorAll('[data-f="poidsIndividuel"]')).map(inp=> inp.value ? parseFloat(inp.value) : null);
+        const weightsEl = row.querySelector('.palox-weights');
+        const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
         const commentaire = row.querySelector('[data-f="commentaire"]').value.trim();
         const batchId = uid();
         const poidsKnown = [];
         for(let n=0;n<count;n++){
-          const poidsUnit = poidsList[n]!=null ? poidsList[n] : null;
-          if(poidsUnit!=null) poidsKnown.push(poidsUnit);
-          state.lots.push({ id: uid(), celluleId, ligneId, batchId, produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poids: poidsUnit, dateEntree: dateVal, commentaire });
+          const { poids: poidsUnit, poidsLot2: poidsLot2Unit } = resolvePaloxWeight(paloxStates[n]);
+          if(poidsUnit!=null || poidsLot2Unit!=null) poidsKnown.push((poidsUnit||0) + (poidsLot2Unit||0));
+          state.lots.push({ id: uid(), celluleId, ligneId, batchId, produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree: dateVal, commentaire });
         }
         const poidsTotal = poidsKnown.length ? poidsKnown.reduce((a,b)=>a+b,0) : null;
         addTx('entree', { quantite: count, poids: poidsTotal, produit, lot: lotVal, lot2: lot2Val, date: dateVal, commentaire, label: caseLabel(celluleId,ligneId) });
@@ -1059,7 +1109,8 @@
         order.push(key);
       }
       map[key].count++;
-      if(l.poids!=null) map[key].poidsConnu += l.poids; else map[key].inconnu++;
+      const tot = paloxTotalPoids(l);
+      if(tot!=null) map[key].poidsConnu += tot; else map[key].inconnu++;
     });
     return order.map(k=>map[k]).sort((a,b)=>{
       if(byCellule){
