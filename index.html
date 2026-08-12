@@ -167,6 +167,13 @@
   .role-badge.viewer{ background: var(--blue-soft); color: var(--blue); }
   .readonly-note{ background: var(--panel-2); border:1px dashed var(--line); border-radius:8px; padding:10px 12px; font-size:12.5px; color:var(--ink-soft); }
   .filter-bar{ background: var(--copper-soft); border-radius:8px; padding:8px 12px; font-size:12.5px; color: var(--ink); margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .consult-total{ background: var(--panel-2); border-radius:8px; padding:10px 14px; margin-top:12px; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .consult-total span:first-child{ color: var(--ink-soft); font-weight:600; text-transform:uppercase; font-size:11px; letter-spacing:.04em; }
+  table.data tr.totals-row td{ font-weight:700; border-top:2px solid var(--line); border-bottom:none; }
+  .view-switch{ display:flex; gap:6px; margin-bottom:14px; }
+  .view-switch button{ font-family:'Inter', sans-serif; font-size:12.5px; font-weight:700; padding:8px 14px; border-radius:7px; border:1.5px solid var(--line); background:#fff; color:var(--ink-soft); cursor:pointer; }
+  .view-switch button.active{ background: var(--copper); border-color: var(--copper); color:#fff; }
+  .produit-dot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px; vertical-align:1px; }
 </style>
 </head>
 <body>
@@ -215,6 +222,7 @@
   <nav class="tabs" id="tabs">
     <button data-tab="stockage" class="active">Stockage</button>
     <button data-tab="recherche">Recherche</button>
+    <button data-tab="global">Stock global</button>
     <button data-tab="historique">Historique</button>
     <button data-tab="cellules" id="tabCellules">Cellules</button>
   </nav>
@@ -253,6 +261,7 @@
   let loaded = false;
   let currentTab = 'stockage';
   let currentCelluleId = null;
+  let globalByCellule = false;
   const COLOR_PALETTE = ['#A85C2E','#4E6647','#3E5C76','#8B5FBF','#B0793E','#5C7A6E','#7A4B4B','#5A6B8C','#946846','#3F7161'];
 
   function uid(){ return Math.random().toString(36).slice(2,9); }
@@ -490,6 +499,7 @@
     const app = document.getElementById('app');
     if(tab==='stockage') app.innerHTML = viewStockage();
     if(tab==='recherche') app.innerHTML = viewRecherche();
+    if(tab==='global') app.innerHTML = viewGlobal();
     if(tab==='historique') app.innerHTML = viewHistorique();
     if(tab==='cellules') app.innerHTML = viewCellules();
     bindTabEvents(tab);
@@ -1070,7 +1080,6 @@
   }
   function refreshSearchResults(){
     document.getElementById('searchResults').innerHTML = searchResultsHtml(currentSearchFilters());
-    bindLocateButtons();
   }
   function searchResultsHtml(filters){
     filters = filters || {};
@@ -1083,7 +1092,11 @@
     if(lotText) batches = batches.filter(b=>(b.lot||'').toLowerCase().includes(lotText));
     if(q) batches = batches.filter(b => [b.produit,b.lot,b.parcelle,b.calibre,b.traitement].some(f => (f||'').toLowerCase().includes(q)));
     const anyFilter = q || filters.celluleId || filters.produit || filters.calibre || lotText;
-    if(batches.length===0) return emptyState(anyFilter? "Aucun résultat" : "Aucun palox enregistré", anyFilter? "Essaie d'élargir tes critères." : "Filtre par cellule, produit, calibre, lot — ou tape une recherche libre.");
+    const totalPaloxCount = batches.reduce((s,b)=>s+b.paloxs.length,0);
+    const totalKnown = batches.reduce((s,b)=>s+batchPoidsSummary(b).total,0);
+    const totalUnknown = batches.reduce((s,b)=>s+batchPoidsSummary(b).unknown,0);
+    const totalHtml = '<div class="consult-total"><span>Total affiché</span><span>'+totalPaloxCount+' palox · '+fmt(totalKnown)+' kg'+(totalUnknown>0?' connus ('+totalUnknown+' palox sans poids)':'')+'</span></div>';
+    if(batches.length===0) return emptyState(anyFilter? "Aucun résultat" : "Aucun palox enregistré", anyFilter? "Essaie d'élargir tes critères." : "Filtre par cellule, produit, calibre, lot — ou tape une recherche libre.")+totalHtml;
     const rows = batches.map(b=>{
       const summary = batchPoidsSummary(b);
       const poidsStr = summary.total>0 ? (fmt(summary.total)+' kg'+(summary.unknown>0?' (partiel)':'')) : '—';
@@ -1091,10 +1104,61 @@
         '<td>'+escapeHtml(b.parcelle||'—')+'</td><td>'+escapeHtml(b.calibre||'—')+'</td><td>'+escapeHtml(b.traitement||'—')+'</td>'+
         '<td class="mono">'+b.paloxs.length+'</td>'+
         '<td class="mono">'+poidsStr+'</td>'+
-        '<td>'+escapeHtml(caseLabel(b.celluleId,b.ligneId))+'</td>'+
-        '<td><button class="btn btn-sm btn-copper" data-locate-cellule="'+b.celluleId+'" data-locate-ligne="'+b.ligneId+'" data-locate-produit="'+encodeURIComponent(b.produit)+'">Localiser</button></td></tr>';
+        '<td>'+escapeHtml(caseLabel(b.celluleId,b.ligneId))+'</td></tr>';
     }).join('');
-    return '<div class="table-scroll"><table class="data"><thead><tr><th>Produit</th><th>Lot</th><th>Parcelle</th><th>Calibre</th><th>Traitement</th><th>Palox</th><th>Poids</th><th>Emplacement</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    return '<div class="table-scroll"><table class="data"><thead><tr><th>Produit</th><th>Lot</th><th>Parcelle</th><th>Calibre</th><th>Traitement</th><th>Palox</th><th>Poids</th><th>Emplacement</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+totalHtml;
+  }
+
+  // ---------- STOCK GLOBAL ----------
+  function globalStockGroups(byCellule){
+    const map = {}, order = [];
+    state.lots.forEach(l=>{
+      const key = (byCellule ? l.celluleId+'|' : '') + l.produit + '|' + (l.calibre||'');
+      if(!map[key]){
+        map[key] = { celluleId: byCellule ? l.celluleId : null, produit: l.produit, calibre: l.calibre||'', count:0, poidsConnu:0, inconnu:0 };
+        order.push(key);
+      }
+      map[key].count++;
+      if(l.poids!=null) map[key].poidsConnu += l.poids; else map[key].inconnu++;
+    });
+    return order.map(k=>map[k]).sort((a,b)=>{
+      if(byCellule){
+        const nomA = getCellule(a.celluleId).nom, nomB = getCellule(b.celluleId).nom;
+        if(nomA!==nomB) return nomA.localeCompare(nomB,'fr');
+      }
+      if(a.produit!==b.produit) return a.produit.localeCompare(b.produit,'fr');
+      return (a.calibre||'').localeCompare(b.calibre||'','fr');
+    });
+  }
+  function viewGlobal(){
+    const groups = globalStockGroups(globalByCellule);
+    const switchHtml = '<div class="view-switch">'+
+      '<button type="button" data-global-mode="all" class="'+(!globalByCellule?'active':'')+'">Toutes les cellules</button>'+
+      '<button type="button" data-global-mode="cellule" class="'+(globalByCellule?'active':'')+'">Par cellule</button>'+
+    '</div>';
+    if(groups.length===0){
+      return '<div class="card"><h2>Stock global</h2><p class="sub">Vue d\'ensemble du stock, tous produits et calibres confondus.</p>'+switchHtml+emptyState("Aucun palox enregistré", "Le stock global se remplit dès la première entrée.")+'</div>';
+    }
+    const rows = groups.map(g=>{
+      const poidsStr = g.poidsConnu>0 ? (fmt(g.poidsConnu)+' kg'+(g.inconnu>0?' (partiel)':'')) : '—';
+      const celluleCell = globalByCellule ? '<td>'+escapeHtml(getCellule(g.celluleId).nom)+'</td>' : '';
+      return '<tr>'+celluleCell+
+        '<td><span class="produit-dot" style="background:'+colorForProduit(g.produit)+'"></span>'+escapeHtml(g.produit)+'</td>'+
+        '<td>'+escapeHtml(g.calibre||'—')+'</td>'+
+        '<td class="mono">'+g.count+'</td>'+
+        '<td class="mono">'+poidsStr+'</td>'+
+      '</tr>';
+    }).join('');
+    const totalCount = groups.reduce((s,g)=>s+g.count,0);
+    const totalPoids = groups.reduce((s,g)=>s+g.poidsConnu,0);
+    const totalInconnu = groups.reduce((s,g)=>s+g.inconnu,0);
+    const celluleHead = globalByCellule ? '<th>Cellule</th>' : '';
+    const celluleTotalCell = globalByCellule ? '<td></td>' : '';
+    const totalsRow = '<tr class="totals-row">'+celluleTotalCell+'<td>Total</td><td></td><td class="mono">'+totalCount+'</td>'+
+      '<td class="mono">'+fmt(totalPoids)+' kg'+(totalInconnu>0?' ('+totalInconnu+' sans poids)':'')+'</td></tr>';
+    return '<div class="card"><h2>Stock global</h2><p class="sub">Vue d\'ensemble du stock par produit et calibre.</p>'+switchHtml+
+      '<div class="table-scroll"><table class="data"><thead><tr>'+celluleHead+'<th>Produit</th><th>Calibre</th><th>Palox</th><th>Poids</th></tr></thead><tbody>'+rows+totalsRow+'</tbody></table></div>'+
+    '</div>';
   }
 
   // ---------- HISTORIQUE ----------
@@ -1171,7 +1235,14 @@
       document.getElementById('filterProduit').addEventListener('change', refreshSearchResults);
       document.getElementById('filterCalibre').addEventListener('change', refreshSearchResults);
       document.getElementById('filterLot').addEventListener('input', refreshSearchResults);
-      bindLocateButtons();
+    }
+    if(tab==='global'){
+      document.querySelectorAll('[data-global-mode]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          globalByCellule = btn.dataset.globalMode==='cellule';
+          renderTab('global');
+        });
+      });
     }
     if(tab==='cellules'){
       document.getElementById('exportBackupBtn').addEventListener('click', exportBackup);
@@ -1235,17 +1306,6 @@
         await saveState(); renderTab('cellules'); renderHeaderStats();
       });
     }
-  }
-
-  function bindLocateButtons(){
-    document.querySelectorAll('[data-locate-cellule]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const celluleId = btn.dataset.locateCellule, ligneId = btn.dataset.locateLigne, produit = decodeURIComponent(btn.dataset.locateProduit||'');
-        currentCelluleId = celluleId;
-        renderTab('stockage');
-        openLigneDetail(celluleId, ligneId, produit);
-      });
-    });
   }
 
   document.getElementById('tabs').addEventListener('click', (ev)=>{
