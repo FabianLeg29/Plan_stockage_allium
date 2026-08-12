@@ -121,6 +121,10 @@
   .inline-form{ margin-top:10px; padding-top:10px; border-top:1px dashed var(--line); display:none; }
   .inline-form.open{ display:block; }
   .entree-row{ border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:10px; background:#fff; }
+  .palox-weights{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+  .palox-weights .pw-item{ display:flex; flex-direction:column; gap:3px; }
+  .palox-weights .pw-item span{ font-size:9.5px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; text-transform:uppercase; letter-spacing:.03em; }
+  .palox-weights .pw-item input{ width:76px; font-family:'IBM Plex Mono'; font-size:12.5px; padding:6px 6px; border:1px solid var(--line); border-radius:6px; }
   .selection-recap{ font-size:12.5px; color:var(--ink-soft); margin-bottom:10px; background:var(--panel); border-radius:6px; padding:8px 10px; }
 
   .divider-label{ font-family:'IBM Plex Mono', monospace; font-size: 10.5px; font-weight:600; color: var(--ink-soft); text-transform:uppercase; letter-spacing: 0.08em; margin: 14px 0 10px; display:flex; align-items:center; gap:10px; }
@@ -453,7 +457,7 @@
     lots.forEach(l=>{
       const key = l.batchId+'|'+l.celluleId+'|'+l.ligneId;
       if(!map[key]){
-        map[key] = { batchId:l.batchId, celluleId:l.celluleId, ligneId:l.ligneId, produit:l.produit, lot:l.lot,
+        map[key] = { batchId:l.batchId, celluleId:l.celluleId, ligneId:l.ligneId, produit:l.produit, lot:l.lot, lot2:l.lot2,
           parcelle:l.parcelle, calibre:l.calibre, traitement:l.traitement, dateEntree:l.dateEntree, commentaire:l.commentaire, paloxs:[] };
         order.push(key);
       }
@@ -519,9 +523,7 @@
 
     const toolbar = currentRole==='editor' ?
       '<div class="stockage-toolbar">'+
-        '<button class="btn btn-green btn-sm" data-bulk="entree">+ Entrée groupée</button>'+
-        '<button class="btn btn-blue btn-sm" data-bulk="deplacement">↔ Déplacement groupé</button>'+
-        '<button class="btn btn-warn btn-sm" data-bulk="sortie">→ Sortie groupée</button>'+
+        '<button class="btn btn-green btn-sm" id="openBulkEntree">+ Entrée groupée</button>'+
       '</div>' : '';
 
     const lignesHtml = c.lignes.map(l=>{
@@ -566,7 +568,7 @@
     }).join('');
     return '<div class="lot-card" style="border-left-color:'+colorForProduit(batch.produit)+'" data-batch="'+batch.batchId+'" data-cellule="'+batch.celluleId+'" data-ligne="'+batch.ligneId+'" data-produit="'+escapeHtml((batch.produit||'').toLowerCase())+'">'+
       '<div class="lp-title">'+escapeHtml(batch.produit)+'</div>'+
-      '<div class="lp-meta">Lot <span>'+escapeHtml(batch.lot||'—')+'</span>'+
+      '<div class="lp-meta">Lot <span>'+escapeHtml(batch.lot||'—')+(batch.lot2? ' + '+escapeHtml(batch.lot2):'')+'</span>'+
         (batch.parcelle? ' · Parcelle <span>'+escapeHtml(batch.parcelle)+'</span>':'')+
         (batch.calibre? ' · Calibre <span>'+escapeHtml(batch.calibre)+'</span>':'')+
         (batch.traitement? ' · '+escapeHtml(batch.traitement):'')+
@@ -635,18 +637,37 @@
     refetchState();
   }
 
+  function paloxWeightInputsHtml(count, existing){
+    existing = existing || [];
+    let html = '';
+    for(let i=0;i<count;i++){
+      const val = existing[i]!=null ? existing[i] : '';
+      html += '<div class="pw-item"><span>'+(count>1? 'Palox '+(i+1) : 'Poids')+'</span><input type="number" min="0" step="0.01" data-f="poidsIndividuel" data-idx="'+i+'" value="'+val+'"></div>';
+    }
+    return html;
+  }
+  function refreshPaloxWeightInputs(row){
+    const nbInput = row.querySelector('[data-f="nbPalox"]');
+    const weightsEl = row.querySelector('.palox-weights');
+    if(!nbInput || !weightsEl) return;
+    const existing = Array.from(weightsEl.querySelectorAll('[data-f="poidsIndividuel"]')).map(inp=>inp.value!==''? inp.value : null);
+    const count = Math.min(500, Math.max(1, Math.round(parseFloat(nbInput.value)||1)));
+    weightsEl.innerHTML = paloxWeightInputsHtml(count, existing);
+  }
   function entreeRowHtml(idx){
     return '<div class="entree-row" data-row-idx="'+idx+'">'+
       '<div class="grid-form two">'+
         '<label class="field">Produit<input type="text" data-f="produit" placeholder="ECHALOTE" required></label>'+
         '<label class="field">Lot<input type="text" data-f="lot" placeholder="L167GB03"></label>'+
+        '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" placeholder="si palox mixte"></label>'+
         '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
         '<label class="field">Calibre<input type="text" data-f="calibre" placeholder="30/40"></label>'+
         '<label class="field">Traitement<input type="text" data-f="traitement" placeholder="TRESSE, RDF, BIO…"></label>'+
         '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required></label>'+
-        '<label class="field">Poids par palox (kg) — optionnel<input type="number" min="0" step="0.01" data-f="poids"><span class="hint">Appliqué à chaque palox de cette ligne de saisie</span></label>'+
         '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" placeholder="observations…"></label>'+
       '</div>'+
+      '<div class="hint" style="display:block;margin-top:10px;">Poids par palox (kg) — optionnel, laisse vide si inconnu</div>'+
+      '<div class="palox-weights">'+paloxWeightInputsHtml(1)+'</div>'+
       (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer cette ligne de saisie</button>' : '')+
     '</div>';
   }
@@ -664,10 +685,11 @@
   function collectPendingRowInputs(container){
     return Array.from(container.querySelectorAll('.entree-row')).map(row=>{
       const get = (f)=> row.querySelector('[data-f="'+f+'"]').value;
+      const poidsList = Array.from(row.querySelectorAll('[data-f="poidsIndividuel"]')).map(inp=> inp.value ? parseFloat(inp.value) : null);
       return {
-        produit: get('produit').trim(), lot: get('lot').trim(), parcelle: get('parcelle').trim(),
+        produit: get('produit').trim(), lot: get('lot').trim(), lot2: get('lot2').trim(), parcelle: get('parcelle').trim(),
         calibre: get('calibre').trim(), traitement: get('traitement').trim(),
-        nbPalox: parseFloat(get('nbPalox')), poidsRaw: get('poids'), commentaire: get('commentaire').trim()
+        nbPalox: parseFloat(get('nbPalox')), poidsList, commentaire: get('commentaire').trim()
       };
     });
   }
@@ -719,6 +741,9 @@
       document.getElementById('entreeRows').addEventListener('click', (ev)=>{
         if(ev.target.matches('[data-remove-row]')) ev.target.closest('.entree-row').remove();
       });
+      document.getElementById('entreeRows').addEventListener('input', (ev)=>{
+        if(ev.target.matches('[data-f="nbPalox"]')) refreshPaloxWeightInputs(ev.target.closest('.entree-row'));
+      });
 
       fe.addEventListener('submit', async (ev)=>{
         ev.preventDefault();
@@ -740,12 +765,15 @@
             skipped++; continue;
           }
           const batchId = uid();
-          const perUnitPoids = row.poidsRaw ? parseFloat(row.poidsRaw) : null;
+          const poidsKnown = [];
           for(let n=0;n<count;n++){
-            state.lots.push({ id: uid(), celluleId, ligneId, batchId, produit: row.produit, lot: row.lot, parcelle: row.parcelle,
-              calibre: row.calibre, traitement: row.traitement, poids: perUnitPoids, dateEntree: dateVal, commentaire: row.commentaire });
+            const poidsUnit = row.poidsList[n]!=null ? row.poidsList[n] : null;
+            if(poidsUnit!=null) poidsKnown.push(poidsUnit);
+            state.lots.push({ id: uid(), celluleId, ligneId, batchId, produit: row.produit, lot: row.lot, lot2: row.lot2, parcelle: row.parcelle,
+              calibre: row.calibre, traitement: row.traitement, poids: poidsUnit, dateEntree: dateVal, commentaire: row.commentaire });
           }
-          addTx('entree', { quantite: count, poids: perUnitPoids!=null?perUnitPoids*count:null, produit: row.produit, lot: row.lot, date: dateVal, commentaire: row.commentaire, label: caseLabel(celluleId,ligneId) });
+          const poidsTotal = poidsKnown.length ? poidsKnown.reduce((a,b)=>a+b,0) : null;
+          addTx('entree', { quantite: count, poids: poidsTotal, produit: row.produit, lot: row.lot, lot2: row.lot2, date: dateVal, commentaire: row.commentaire, label: caseLabel(celluleId,ligneId) });
           placed++;
         }
 
@@ -827,7 +855,7 @@
     });
   }
 
-  // ---------- SAISIE GROUPÉE (plusieurs lignes à la fois) ----------
+  // ---------- ENTRÉE GROUPÉE (plusieurs lignes à la fois) ----------
   function ligneOptionsHtml(celluleId, selectedLigneId){
     const c = getCellule(celluleId);
     if(!c) return '';
@@ -836,100 +864,50 @@
   function celluleOptionsHtml(selectedCelluleId){
     return state.cellules.map(c=>'<option value="'+c.id+'" '+(c.id===selectedCelluleId?'selected':'')+'>'+escapeHtml(c.nom)+'</option>').join('');
   }
-  function batchOptionsHtml(celluleId, ligneId){
-    const batches = batchesInLigne(celluleId, ligneId);
-    if(batches.length===0) return '<option value="">— Aucun stock dans cette ligne —</option>';
-    return '<option value="">— Choisir un produit —</option>'+batches.map(b=>'<option value="'+b.batchId+'">'+escapeHtml(b.produit)+(b.lot?' ('+escapeHtml(b.lot)+')':'')+' — '+b.paloxs.length+' palox</option>').join('');
-  }
 
-  function bulkRowHtml(mode, idx){
+  function bulkRowHtml(idx){
     const c0 = state.cellules[0];
-    if(mode==='entree'){
-      return '<div class="entree-row" data-row-idx="'+idx+'">'+
-        '<div class="grid-form two">'+
-          '<label class="field">Cellule<select data-f="cellule">'+celluleOptionsHtml(c0.id)+'</select></label>'+
-          '<label class="field">Ligne<select data-f="ligne">'+ligneOptionsHtml(c0.id)+'</select></label>'+
-          '<label class="field">Produit<input type="text" data-f="produit" placeholder="ECHALOTE" required></label>'+
-          '<label class="field">Lot<input type="text" data-f="lot" placeholder="L167GB03"></label>'+
-          '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
-          '<label class="field">Calibre<input type="text" data-f="calibre" placeholder="30/40"></label>'+
-          '<label class="field">Traitement<input type="text" data-f="traitement" placeholder="TRESSE, RDF, BIO…"></label>'+
-          '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required></label>'+
-          '<label class="field span-2">Poids par palox (kg) — optionnel<input type="number" min="0" step="0.01" data-f="poids"></label>'+
-          '<label class="field span-2">Commentaire<input type="text" data-f="commentaire"></label>'+
-        '</div>'+
-        (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer cette ligne de saisie</button>' : '')+
-      '</div>';
-    }
-    if(mode==='sortie'){
-      return '<div class="entree-row" data-row-idx="'+idx+'">'+
-        '<div class="grid-form two">'+
-          '<label class="field">Cellule<select data-f="cellule">'+celluleOptionsHtml(c0.id)+'</select></label>'+
-          '<label class="field">Ligne<select data-f="ligne">'+ligneOptionsHtml(c0.id)+'</select></label>'+
-          '<label class="field span-2">Produit<select data-f="batchid">'+batchOptionsHtml(c0.id, c0.lignes[0].id)+'</select></label>'+
-          '<label class="field">Nb de palox à sortir<input type="number" min="1" step="1" data-f="qty" value="1"></label>'+
-          '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" placeholder="vente, perte, usage…"></label>'+
-        '</div>'+
-        (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer cette ligne de saisie</button>' : '')+
-      '</div>';
-    }
     return '<div class="entree-row" data-row-idx="'+idx+'">'+
       '<div class="grid-form two">'+
-        '<label class="field">Cellule source<select data-f="cellule">'+celluleOptionsHtml(c0.id)+'</select></label>'+
-        '<label class="field">Ligne source<select data-f="ligne">'+ligneOptionsHtml(c0.id)+'</select></label>'+
-        '<label class="field span-2">Produit<select data-f="batchid">'+batchOptionsHtml(c0.id, c0.lignes[0].id)+'</select></label>'+
-        '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="qty" value="1"></label>'+
-        '<label class="field">Cellule destination<select data-f="destCellule">'+celluleOptionsHtml(c0.id)+'</select></label>'+
-        '<label class="field">Ligne destination<select data-f="destLigne">'+ligneOptionsHtml(c0.id)+'</select></label>'+
-        '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" placeholder="raison du déplacement…"></label>'+
+        '<label class="field">Cellule<select data-f="cellule">'+celluleOptionsHtml(c0.id)+'</select></label>'+
+        '<label class="field">Ligne<select data-f="ligne">'+ligneOptionsHtml(c0.id)+'</select></label>'+
+        '<label class="field">Produit<input type="text" data-f="produit" placeholder="ECHALOTE" required></label>'+
+        '<label class="field">Lot<input type="text" data-f="lot" placeholder="L167GB03"></label>'+
+        '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" placeholder="si palox mixte"></label>'+
+        '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
+        '<label class="field">Calibre<input type="text" data-f="calibre" placeholder="30/40"></label>'+
+        '<label class="field">Traitement<input type="text" data-f="traitement" placeholder="TRESSE, RDF, BIO…"></label>'+
+        '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required></label>'+
+        '<label class="field span-2">Commentaire<input type="text" data-f="commentaire"></label>'+
       '</div>'+
+      '<div class="hint" style="display:block;margin-top:10px;">Poids par palox (kg) — optionnel, laisse vide si inconnu</div>'+
+      '<div class="palox-weights">'+paloxWeightInputsHtml(1)+'</div>'+
       (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer cette ligne de saisie</button>' : '')+
     '</div>';
   }
 
   let bulkRowCounter = 0;
 
-  function openBulkPanel(mode){
+  function openBulkEntreePanel(){
     bulkRowCounter = 0;
-    const titles = { entree: 'Entrée groupée', sortie: 'Sortie groupée', deplacement: 'Déplacement groupé' };
-    const subs = {
-      entree: 'Ajoute du stock sur plusieurs lignes en une seule fois — une ligne de saisie par produit/emplacement.',
-      sortie: 'Sors du stock de plusieurs lignes en une seule fois.',
-      deplacement: 'Déplace du stock entre plusieurs lignes en une seule fois.'
-    };
     const panel = document.getElementById('detailPanel');
     panel.innerHTML =
-      '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>'+titles[mode]+'</h3><p>'+subs[mode]+'</p></div>'+
+      '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>Entrée groupée</h3><p>Ajoute du stock sur plusieurs lignes en une seule fois — une ligne de saisie par produit/emplacement.</p></div>'+
       '<div class="detail-body">'+
-        '<form id="bulkForm" data-mode="'+mode+'">'+
-          '<div id="bulkRows">'+bulkRowHtml(mode,0)+'</div>'+
+        '<form id="bulkForm">'+
+          '<div id="bulkRows">'+bulkRowHtml(0)+'</div>'+
           '<button type="button" class="btn btn-ghost btn-sm" id="addBulkRow" style="margin-top:4px;">+ Ajouter une ligne de saisie</button>'+
           '<div class="grid-form two" style="margin-top:12px;"><label class="field">Date<input type="date" name="bulkDate" value="'+today()+'" required></label></div>'+
-          '<div class="btn-row"><button class="btn '+(mode==='entree'?'btn-green':mode==='sortie'?'btn-warn':'btn-blue')+'" type="submit">Valider</button><span class="msg" id="bulkMsg"></span></div>'+
+          '<div class="btn-row"><button class="btn btn-green" type="submit">Valider</button><span class="msg" id="bulkMsg"></span></div>'+
         '</form>'+
       '</div>';
     panel.classList.add('open');
     document.getElementById('overlayBg').classList.add('open');
     panel.dataset.mode = 'bulk';
-    bindBulkEvents(mode);
+    bindBulkEvents();
   }
 
-  function bulkRowRefresh(row, mode){
-    const celSel = row.querySelector('[data-f="cellule"]');
-    const ligSel = row.querySelector('[data-f="ligne"]');
-    ligSel.innerHTML = ligneOptionsHtml(celSel.value);
-    if(mode!=='entree'){
-      const batchSel = row.querySelector('[data-f="batchid"]');
-      batchSel.innerHTML = batchOptionsHtml(celSel.value, ligSel.value);
-    }
-    if(mode==='deplacement'){
-      const destCelSel = row.querySelector('[data-f="destCellule"]');
-      const destLigSel = row.querySelector('[data-f="destLigne"]');
-      destLigSel.innerHTML = ligneOptionsHtml(destCelSel.value);
-    }
-  }
-
-  function bindBulkEvents(mode){
+  function bindBulkEvents(){
     document.getElementById('closeDetail').addEventListener('click', closeDetail);
     document.getElementById('overlayBg').addEventListener('click', closeDetail);
 
@@ -938,20 +916,22 @@
     document.getElementById('addBulkRow').addEventListener('click', ()=>{
       bulkRowCounter++;
       const wrap = document.createElement('div');
-      wrap.innerHTML = bulkRowHtml(mode, bulkRowCounter);
+      wrap.innerHTML = bulkRowHtml(bulkRowCounter);
       const row = wrap.firstElementChild;
       rowsEl.appendChild(row);
-      bulkRowRefresh(row, mode);
+      row.querySelector('[data-f="ligne"]').innerHTML = ligneOptionsHtml(row.querySelector('[data-f="cellule"]').value);
     });
 
     rowsEl.addEventListener('click', (ev)=>{
       if(ev.target.matches('[data-remove-row]')) ev.target.closest('.entree-row').remove();
     });
+    rowsEl.addEventListener('input', (ev)=>{
+      if(ev.target.matches('[data-f="nbPalox"]')) refreshPaloxWeightInputs(ev.target.closest('.entree-row'));
+    });
     rowsEl.addEventListener('change', (ev)=>{
-      const row = ev.target.closest('.entree-row');
-      if(!row) return;
-      if(ev.target.matches('[data-f="cellule"]') || ev.target.matches('[data-f="ligne"]') || ev.target.matches('[data-f="destCellule"]')){
-        bulkRowRefresh(row, mode);
+      if(ev.target.matches('[data-f="cellule"]')){
+        const row = ev.target.closest('.entree-row');
+        row.querySelector('[data-f="ligne"]').innerHTML = ligneOptionsHtml(ev.target.value);
       }
     });
 
@@ -962,75 +942,35 @@
       const msg = document.getElementById('bulkMsg');
       let applied = 0, errors = [];
 
-      if(mode==='entree'){
-        rows.forEach((row, idx)=>{
-          const celluleId = row.querySelector('[data-f="cellule"]').value;
-          const ligneId = row.querySelector('[data-f="ligne"]').value;
-          const produit = row.querySelector('[data-f="produit"]').value.trim();
-          const nbPalox = parseFloat(row.querySelector('[data-f="nbPalox"]').value);
-          const ligneObj = getLigne(celluleId, ligneId);
-          if(!produit){ errors.push('Ligne #'+(idx+1)+' : produit manquant'); return; }
-          if(!nbPalox || nbPalox<1){ errors.push('Ligne #'+(idx+1)+' : quantité invalide'); return; }
-          const count = Math.round(nbPalox);
-          const used = ligneOccupied(celluleId, ligneId);
-          if(used + count > ligneObj.capacite){ errors.push('Ligne #'+(idx+1)+' ('+ligneObj.nom+') : ne rentre pas, '+(ligneObj.capacite-used)+' palox restants'); return; }
-          const lotVal = row.querySelector('[data-f="lot"]').value.trim();
-          const parcelle = row.querySelector('[data-f="parcelle"]').value.trim();
-          const calibre = row.querySelector('[data-f="calibre"]').value.trim();
-          const traitement = row.querySelector('[data-f="traitement"]').value.trim();
-          const poidsRaw = row.querySelector('[data-f="poids"]').value;
-          const perUnitPoids = poidsRaw ? parseFloat(poidsRaw) : null;
-          const commentaire = row.querySelector('[data-f="commentaire"]').value.trim();
-          const batchId = uid();
-          for(let n=0;n<count;n++){
-            state.lots.push({ id: uid(), celluleId, ligneId, batchId, produit, lot: lotVal, parcelle, calibre, traitement, poids: perUnitPoids, dateEntree: dateVal, commentaire });
-          }
-          addTx('entree', { quantite: count, poids: perUnitPoids!=null?perUnitPoids*count:null, produit, lot: lotVal, date: dateVal, commentaire, label: caseLabel(celluleId,ligneId) });
-          applied++;
-        });
-      } else if(mode==='sortie'){
-        rows.forEach((row, idx)=>{
-          const batchId = row.querySelector('[data-f="batchid"]').value;
-          const qty = parseFloat(row.querySelector('[data-f="qty"]').value);
-          if(!batchId){ errors.push('Ligne #'+(idx+1)+' : aucun produit sélectionné'); return; }
-          const available = state.lots.filter(l=>l.batchId===batchId);
-          if(available.length===0){ errors.push('Ligne #'+(idx+1)+' : produit introuvable ou déjà sorti'); return; }
-          const count = Math.round(qty);
-          if(!count || count<1 || count>available.length){ errors.push('Ligne #'+(idx+1)+' : quantité invalide ('+available.length+' disponibles)'); return; }
-          const taken = available.slice(0, count);
-          const known = taken.filter(p=>p.poids!=null);
-          const poidsTotal = known.length ? known.reduce((s,p)=>s+p.poids,0) : null;
-          const commentaire = row.querySelector('[data-f="commentaire"]').value.trim();
-          addTx('sortie', { quantite: count, poids: poidsTotal, produit: taken[0].produit, lot: taken[0].lot, date: dateVal, commentaire, label: caseLabel(taken[0].celluleId,taken[0].ligneId) });
-          const takenIds = new Set(taken.map(p=>p.id));
-          state.lots = state.lots.filter(l=>!takenIds.has(l.id));
-          applied++;
-        });
-      } else {
-        rows.forEach((row, idx)=>{
-          const batchId = row.querySelector('[data-f="batchid"]').value;
-          const qty = parseFloat(row.querySelector('[data-f="qty"]').value);
-          const destCelluleId = row.querySelector('[data-f="destCellule"]').value;
-          const destLigneId = row.querySelector('[data-f="destLigne"]').value;
-          if(!batchId){ errors.push('Ligne #'+(idx+1)+' : aucun produit sélectionné'); return; }
-          const available = state.lots.filter(l=>l.batchId===batchId);
-          if(available.length===0){ errors.push('Ligne #'+(idx+1)+' : produit introuvable ou déjà déplacé'); return; }
-          const count = Math.round(qty);
-          if(!count || count<1 || count>available.length){ errors.push('Ligne #'+(idx+1)+' : quantité invalide ('+available.length+' disponibles)'); return; }
-          const first = available[0];
-          const destLigneObj = getLigne(destCelluleId, destLigneId);
-          const isSameSpot = destCelluleId===first.celluleId && destLigneId===first.ligneId;
-          const destOccupied = ligneOccupied(destCelluleId, destLigneId) - (isSameSpot ? count : 0);
-          if(destOccupied + count > destLigneObj.capacite){ errors.push('Ligne #'+(idx+1)+' : ne rentre pas à destination ('+(destLigneObj.capacite-destOccupied)+' palox restants)'); return; }
-          const taken = available.slice(0, count);
-          const known = taken.filter(p=>p.poids!=null);
-          const poidsTotal = known.length ? known.reduce((s,p)=>s+p.poids,0) : null;
-          const commentaire = row.querySelector('[data-f="commentaire"]').value.trim();
-          addTx('deplacement', { quantite: count, poids: poidsTotal, produit: first.produit, lot: first.lot, date: dateVal, commentaire, fromLabel: caseLabel(first.celluleId,first.ligneId), toLabel: caseLabel(destCelluleId,destLigneId) });
-          taken.forEach(p=>{ p.celluleId = destCelluleId; p.ligneId = destLigneId; });
-          applied++;
-        });
-      }
+      rows.forEach((row, idx)=>{
+        const celluleId = row.querySelector('[data-f="cellule"]').value;
+        const ligneId = row.querySelector('[data-f="ligne"]').value;
+        const produit = row.querySelector('[data-f="produit"]').value.trim();
+        const nbPalox = parseFloat(row.querySelector('[data-f="nbPalox"]').value);
+        const ligneObj = getLigne(celluleId, ligneId);
+        if(!produit){ errors.push('Ligne #'+(idx+1)+' : produit manquant'); return; }
+        if(!nbPalox || nbPalox<1){ errors.push('Ligne #'+(idx+1)+' : quantité invalide'); return; }
+        const count = Math.round(nbPalox);
+        const used = ligneOccupied(celluleId, ligneId);
+        if(used + count > ligneObj.capacite){ errors.push('Ligne #'+(idx+1)+' ('+ligneObj.nom+') : ne rentre pas, '+(ligneObj.capacite-used)+' palox restants'); return; }
+        const lotVal = row.querySelector('[data-f="lot"]').value.trim();
+        const lot2Val = row.querySelector('[data-f="lot2"]').value.trim();
+        const parcelle = row.querySelector('[data-f="parcelle"]').value.trim();
+        const calibre = row.querySelector('[data-f="calibre"]').value.trim();
+        const traitement = row.querySelector('[data-f="traitement"]').value.trim();
+        const poidsList = Array.from(row.querySelectorAll('[data-f="poidsIndividuel"]')).map(inp=> inp.value ? parseFloat(inp.value) : null);
+        const commentaire = row.querySelector('[data-f="commentaire"]').value.trim();
+        const batchId = uid();
+        const poidsKnown = [];
+        for(let n=0;n<count;n++){
+          const poidsUnit = poidsList[n]!=null ? poidsList[n] : null;
+          if(poidsUnit!=null) poidsKnown.push(poidsUnit);
+          state.lots.push({ id: uid(), celluleId, ligneId, batchId, produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poids: poidsUnit, dateEntree: dateVal, commentaire });
+        }
+        const poidsTotal = poidsKnown.length ? poidsKnown.reduce((a,b)=>a+b,0) : null;
+        addTx('entree', { quantite: count, poids: poidsTotal, produit, lot: lotVal, lot2: lot2Val, date: dateVal, commentaire, label: caseLabel(celluleId,ligneId) });
+        applied++;
+      });
 
       await saveState();
       renderHeaderStats();
@@ -1089,8 +1029,8 @@
     if(filters.celluleId) batches = batches.filter(b=>b.celluleId===filters.celluleId);
     if(filters.produit) batches = batches.filter(b=>b.produit===filters.produit);
     if(filters.calibre) batches = batches.filter(b=>b.calibre===filters.calibre);
-    if(lotText) batches = batches.filter(b=>(b.lot||'').toLowerCase().includes(lotText));
-    if(q) batches = batches.filter(b => [b.produit,b.lot,b.parcelle,b.calibre,b.traitement].some(f => (f||'').toLowerCase().includes(q)));
+    if(lotText) batches = batches.filter(b=>(b.lot||'').toLowerCase().includes(lotText) || (b.lot2||'').toLowerCase().includes(lotText));
+    if(q) batches = batches.filter(b => [b.produit,b.lot,b.lot2,b.parcelle,b.calibre,b.traitement].some(f => (f||'').toLowerCase().includes(q)));
     const anyFilter = q || filters.celluleId || filters.produit || filters.calibre || lotText;
     const totalPaloxCount = batches.reduce((s,b)=>s+b.paloxs.length,0);
     const totalKnown = batches.reduce((s,b)=>s+batchPoidsSummary(b).total,0);
@@ -1100,7 +1040,7 @@
     const rows = batches.map(b=>{
       const summary = batchPoidsSummary(b);
       const poidsStr = summary.total>0 ? (fmt(summary.total)+' kg'+(summary.unknown>0?' (partiel)':'')) : '—';
-      return '<tr><td>'+escapeHtml(b.produit)+'</td><td class="mono">'+escapeHtml(b.lot||'—')+'</td>'+
+      return '<tr><td>'+escapeHtml(b.produit)+'</td><td class="mono">'+escapeHtml(b.lot||'—')+(b.lot2? ' + '+escapeHtml(b.lot2):'')+'</td>'+
         '<td>'+escapeHtml(b.parcelle||'—')+'</td><td>'+escapeHtml(b.calibre||'—')+'</td><td>'+escapeHtml(b.traitement||'—')+'</td>'+
         '<td class="mono">'+b.paloxs.length+'</td>'+
         '<td class="mono">'+poidsStr+'</td>'+
@@ -1172,7 +1112,7 @@
       const typeLabel = t.type==='entree' ? 'Entrée' : t.type==='sortie' ? 'Sortie' : 'Déplacement';
       const posHtml = t.type==='deplacement' ? ('<span class="mono">'+escapeHtml(t.fromLabel)+'</span> → <span class="mono">'+escapeHtml(t.toLabel)+'</span>') : ('<span class="mono">'+escapeHtml(t.label)+'</span>');
       return '<tr><td>'+fmtDate(t.date)+'</td><td><span class="tag '+t.type+'">'+typeLabel+'</span></td>'+
-        '<td>'+escapeHtml(t.produit||'—')+(t.lot? ' ('+escapeHtml(t.lot)+')':'')+'</td>'+
+        '<td>'+escapeHtml(t.produit||'—')+(t.lot? ' ('+escapeHtml(t.lot)+(t.lot2?' + '+escapeHtml(t.lot2):'')+')':'')+'</td>'+
         '<td>'+posHtml+'</td><td class="mono">'+fmt(t.quantite)+'</td>'+
         '<td class="mono">'+(t.poids!=null? fmt(t.poids)+' kg':'—')+'</td>'+
         '<td>'+escapeHtml(t.commentaire||'—')+'</td></tr>';
@@ -1225,9 +1165,8 @@
           openLigneDetail(cId, lId, decodeURIComponent(prod));
         });
       });
-      document.querySelectorAll('[data-bulk]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{ openBulkPanel(btn.dataset.bulk); });
-      });
+      const bulkBtn = document.getElementById('openBulkEntree');
+      if(bulkBtn) bulkBtn.addEventListener('click', openBulkEntreePanel);
     }
     if(tab==='recherche'){
       document.getElementById('searchInput').addEventListener('input', refreshSearchResults);
