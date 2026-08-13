@@ -290,7 +290,7 @@
 
   // Chaque entrée de state.lots représente UN palox physique (pas un lot agrégé).
   // Plusieurs palox entrés ensemble partagent le même batchId, pour l'affichage groupé "par lot".
-  let state = { cellules: [], lots: [], transactions: [], produits: [] };
+  let state = { cellules: [], lots: [], transactions: [], produits: [], calibres: [] };
   let loaded = false;
   let currentTab = 'stockage';
   let currentCelluleId = null;
@@ -305,7 +305,7 @@
   function isPanelOpen(){ return document.getElementById('detailPanel').classList.contains('open'); }
 
   function applyIncomingState(raw){
-    if(raw){ try{ state = JSON.parse(raw); }catch(e){ state = { cellules:[], lots:[], transactions:[], produits:[] }; } }
+    if(raw){ try{ state = JSON.parse(raw); }catch(e){ state = { cellules:[], lots:[], transactions:[], produits:[], calibres:[] }; } }
     migrate();
     if(!currentCelluleId || !getCellule(currentCelluleId)) currentCelluleId = state.cellules[0] ? state.cellules[0].id : null;
   }
@@ -313,7 +313,7 @@
     if(unsubscribeSnapshot) unsubscribeSnapshot();
     unsubscribeSnapshot = DOC_REF.onSnapshot(async (snap)=>{
       if(!snap.exists){
-        state = { cellules: [], lots: [], transactions: [], produits: [] };
+        state = { cellules: [], lots: [], transactions: [], produits: [], calibres: [] };
         if(canManageStock()){ seedDefault(); applyIncomingState(null); }
         loaded = true;
         render();
@@ -406,6 +406,9 @@
     // Nouveau modèle : ligne { capacite }, lot = UN palox individuel { poids unitaire, batchId }.
     if(!Array.isArray(state.produits)){
       state.produits = ['Echalote','Echalion','Echalote de semis','Oignon de Roscoff','Oignon rouge','Oignon jaune'];
+    }
+    if(!Array.isArray(state.calibres)){
+      state.calibres = ['20/40','40/60','60/80'];
     }
     state.cellules.forEach(c=>{
       c.lignes.forEach(l=>{
@@ -778,7 +781,7 @@
           '<label class="field">Lot<input type="text" data-f="lot" value="'+escapeHtml(first.lot||'')+'"></label>'+
           '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" value="'+escapeHtml(first.lot2||'')+'"></label>'+
           '<label class="field">Parcelle<input type="text" data-f="parcelle" value="'+escapeHtml(first.parcelle||'')+'"></label>'+
-          '<label class="field">Calibre<input type="text" data-f="calibre" value="'+escapeHtml(first.calibre||'')+'"></label>'+
+          '<label class="field">Calibre<select data-f="calibre">'+calibreOptionsHtml(first.calibre||'')+'</select></label>'+
           '<label class="field checkbox-field"><input type="checkbox" data-f="traitement" '+(first.traitement?'checked':'')+'> Traitement antigerme</label>'+
           '<label class="field">Date<input type="date" data-f="dateEntree" value="'+escapeHtml(first.dateEntree||today())+'"></label>'+
           '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" value="'+escapeHtml(first.commentaire||'')+'"></label>'+
@@ -925,6 +928,14 @@
     }
     return '<option value="" '+(!selected?'selected':'')+' disabled>Choisir…</option>'+opts;
   }
+  function calibreOptionsHtml(selected){
+    const list = (state.calibres||[]).slice().sort((a,b)=>a.localeCompare(b,'fr'));
+    let opts = list.map(c=>'<option value="'+escapeHtml(c)+'" '+(c===selected?'selected':'')+'>'+escapeHtml(c)+'</option>').join('');
+    if(selected && !list.includes(selected)){
+      opts = '<option value="'+escapeHtml(selected)+'" selected>'+escapeHtml(selected)+' (hors liste)</option>'+opts;
+    }
+    return '<option value="" '+(!selected?'selected':'')+'>—</option>'+opts;
+  }
 
   function bulkRowHtml(idx, presetCelluleId, presetLigneId){
     const c0 = (presetCelluleId && getCellule(presetCelluleId)) || state.cellules[0];
@@ -936,7 +947,7 @@
         '<label class="field">Lot<input type="text" data-f="lot" placeholder="L167GB03"></label>'+
         '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" placeholder="si palox mixte"></label>'+
         '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
-        '<label class="field">Calibre<input type="text" data-f="calibre" placeholder="30/40"></label>'+
+        '<label class="field">Calibre<select data-f="calibre">'+calibreOptionsHtml('')+'</select></label>'+
         '<label class="field checkbox-field"><input type="checkbox" data-f="traitement"> Traitement antigerme</label>'+
         '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required></label>'+
         '<label class="field span-2">Commentaire<input type="text" data-f="commentaire"></label>'+
@@ -1262,7 +1273,7 @@
     return '<div class="card"><h2>Comptes</h2>'+
       '<p class="sub">Comptes autorisés et leur rôle. La création d\'un nouveau compte (email + mot de passe) se fait toujours depuis la console Firebase ; ajoute-le ensuite ici avec son email et son rôle pour qu\'il apparaisse dans cette liste.</p>'+
       '<div id="comptesList"><div class="loading" style="padding:24px 0;">Chargement des comptes…</div></div>'+
-    '</div>'+viewProduitsAdmin();
+    '</div>'+viewProduitsAdmin()+viewCalibresAdmin();
   }
   function viewProduitsAdmin(){
     const list = (state.produits||[]).slice().sort((a,b)=>a.localeCompare(b,'fr'));
@@ -1276,6 +1287,20 @@
       '<p class="sub">Liste des produits proposés lors d\'une entrée de stock (bouton « + Entrée »), pour que tout le monde saisisse toujours le même intitulé.</p>'+
       (list.length ? rows : emptyState("Aucun produit", "Ajoute au moins un produit pour pouvoir enregistrer une entrée de stock."))+
       '<button class="btn btn-copper btn-sm" id="addProduit" style="margin-top:8px;">+ Nouveau produit</button>'+
+    '</div>';
+  }
+  function viewCalibresAdmin(){
+    const list = (state.calibres||[]).slice().sort((a,b)=>a.localeCompare(b,'fr'));
+    const rows = list.map(c=>{
+      return '<div class="ligne-row">'+
+          '<input type="text" value="'+escapeHtml(c)+'" data-calibre-old="'+escapeHtml(c)+'">'+
+          '<button class="del-btn" data-del-calibre="'+escapeHtml(c)+'">supprimer</button>'+
+      '</div>';
+    }).join('');
+    return '<div class="card"><h2>Calibres</h2>'+
+      '<p class="sub">Liste des calibres proposés lors d\'une entrée ou d\'une modification de stock, pour que tout le monde saisisse toujours le même intitulé.</p>'+
+      (list.length ? rows : emptyState("Aucun calibre", "Ajoute au moins un calibre pour pouvoir le proposer à la saisie."))+
+      '<button class="btn btn-copper btn-sm" id="addCalibre" style="margin-top:8px;">+ Nouveau calibre</button>'+
     '</div>';
   }
   async function loadComptesList(){
@@ -1467,6 +1492,36 @@
         const trimmed = nom.trim();
         if((state.produits||[]).some(p=>p.toLowerCase()===trimmed.toLowerCase())){ alert('Ce produit existe déjà dans la liste.'); return; }
         state.produits.push(trimmed);
+        await saveState(); renderTab('comptes');
+      });
+      document.querySelectorAll('[data-calibre-old]').forEach(inp=>{
+        inp.addEventListener('change', async ()=>{
+          const oldName = inp.dataset.calibreOld;
+          const newName = inp.value.trim();
+          if(!newName){ inp.value = oldName; return; }
+          if(newName!==oldName && (state.calibres||[]).some(c=>c.toLowerCase()===newName.toLowerCase())){
+            alert('Ce calibre existe déjà dans la liste.'); inp.value = oldName; return;
+          }
+          const idx = state.calibres.indexOf(oldName);
+          if(idx>-1) state.calibres[idx] = newName;
+          await saveState(); renderTab('comptes');
+        });
+      });
+      document.querySelectorAll('[data-del-calibre]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const nom = btn.dataset.delCalibre;
+          if(!confirm('Supprimer « '+nom+' » de la liste ? Les entrées déjà enregistrées avec ce calibre ne sont pas affectées.')) return;
+          state.calibres = state.calibres.filter(c=>c!==nom);
+          await saveState(); renderTab('comptes');
+        });
+      });
+      const addCalibreBtn = document.getElementById('addCalibre');
+      if(addCalibreBtn) addCalibreBtn.addEventListener('click', async ()=>{
+        const nom = prompt('Nom du nouveau calibre :', '');
+        if(!nom || !nom.trim()) return;
+        const trimmed = nom.trim();
+        if((state.calibres||[]).some(c=>c.toLowerCase()===trimmed.toLowerCase())){ alert('Ce calibre existe déjà dans la liste.'); return; }
+        state.calibres.push(trimmed);
         await saveState(); renderTab('comptes');
       });
     }
