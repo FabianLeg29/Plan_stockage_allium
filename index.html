@@ -1054,6 +1054,7 @@
       '</div>'+
       '<div class="search-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'+
       '<input type="text" id="searchInput" placeholder="recherche libre : parcelle…"></div>'+
+      '<div class="btn-row" style="margin-top:10px;"><button type="button" class="btn btn-blue btn-sm" id="exportStockBtn">Exporter en Excel (.csv)</button></div>'+
       '<div id="searchResults">'+searchResultsHtml({})+'</div></div>';
   }
   function currentSearchFilters(){
@@ -1068,7 +1069,7 @@
   function refreshSearchResults(){
     document.getElementById('searchResults').innerHTML = searchResultsHtml(currentSearchFilters());
   }
-  function searchResultsHtml(filters){
+  function filteredBatches(filters){
     filters = filters || {};
     const q = (filters.q||'').toLowerCase().trim();
     const lotText = (filters.lot||'').toLowerCase().trim();
@@ -1078,6 +1079,42 @@
     if(filters.calibre) batches = batches.filter(b=>b.calibre===filters.calibre);
     if(lotText) batches = batches.filter(b=>(b.lot||'').toLowerCase().includes(lotText) || (b.lot2||'').toLowerCase().includes(lotText));
     if(q) batches = batches.filter(b => [b.produit,b.lot,b.lot2,b.parcelle,b.calibre,(b.traitement?'antigerme':'')].some(f => (f||'').toLowerCase().includes(q)));
+    return batches;
+  }
+  function csvEscape(v){
+    v = String(v??'');
+    return /[;"\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+  }
+  function exportStockCsv(){
+    const batches = filteredBatches(currentSearchFilters());
+    const header = ['Produit','Lot','Poids total (kg)','Palox','Emplacement','Calibre','Traitement'];
+    const lines = [header.join(';')];
+    batches.forEach(b=>{
+      const summary = batchPoidsSummary(b);
+      const row = [
+        b.produit||'',
+        (b.lot||'')+(b.lot2? ' + '+b.lot2 : ''),
+        summary.total>0 ? fmt(summary.total) : '',
+        b.paloxs.length,
+        caseLabel(b.celluleId,b.ligneId),
+        b.calibre||'',
+        b.traitement ? 'Oui' : 'Non'
+      ];
+      lines.push(row.map(csvEscape).join(';'));
+    });
+    const blob = new Blob(['\uFEFF'+lines.join('\r\n')], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'stock-'+today()+'.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  }
+  function searchResultsHtml(filters){
+    filters = filters || {};
+    const q = (filters.q||'').toLowerCase().trim();
+    const lotText = (filters.lot||'').toLowerCase().trim();
+    const batches = filteredBatches(filters);
     const anyFilter = q || filters.celluleId || filters.produit || filters.calibre || lotText;
     const totalPaloxCount = batches.reduce((s,b)=>s+b.paloxs.length,0);
     const totalKnown = batches.reduce((s,b)=>s+batchPoidsSummary(b).total,0);
@@ -1298,6 +1335,7 @@
       document.getElementById('filterProduit').addEventListener('change', refreshSearchResults);
       document.getElementById('filterCalibre').addEventListener('change', refreshSearchResults);
       document.getElementById('filterLot').addEventListener('input', refreshSearchResults);
+      document.getElementById('exportStockBtn').addEventListener('click', exportStockCsv);
     }
     if(tab==='historique'){
       document.querySelectorAll('[data-del-tx]').forEach(btn=>{
