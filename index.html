@@ -1163,9 +1163,11 @@
         '<td>'+escapeHtml(t.produit||'—')+(t.lot? ' ('+escapeHtml(t.lot)+(t.lot2?' + '+escapeHtml(t.lot2):'')+')':'')+'</td>'+
         '<td>'+posHtml+'</td><td class="mono">'+fmt(t.quantite)+'</td>'+
         '<td class="mono">'+(t.poids!=null? fmt(t.poids)+' kg':'—')+'</td>'+
-        '<td>'+escapeHtml(t.commentaire||'—')+'</td></tr>';
+        '<td>'+escapeHtml(t.commentaire||'—')+'</td>'+
+        (isAdmin() ? '<td><button class="del-btn" data-del-tx="'+t.id+'">supprimer</button></td>' : '')+
+      '</tr>';
     }).join('');
-    return '<div class="table-scroll"><table class="data"><thead><tr><th>Date</th><th>Type</th><th>Produit</th><th>Emplacement</th><th>Palox</th><th>Poids</th><th>Commentaire</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    return '<div class="table-scroll"><table class="data"><thead><tr><th>Date</th><th>Type</th><th>Produit</th><th>Emplacement</th><th>Palox</th><th>Poids</th><th>Commentaire</th>'+(isAdmin()?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
 
   // ---------- CELLULES (config) ----------
@@ -1296,6 +1298,16 @@
       document.getElementById('filterProduit').addEventListener('change', refreshSearchResults);
       document.getElementById('filterCalibre').addEventListener('change', refreshSearchResults);
       document.getElementById('filterLot').addEventListener('input', refreshSearchResults);
+    }
+    if(tab==='historique'){
+      document.querySelectorAll('[data-del-tx]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          if(!confirm('Supprimer cette ligne d\'historique ? Cette action ne peut pas être annulée. Le stock associé n\'est pas modifié.')) return;
+          state.transactions = state.transactions.filter(t=>t.id!==btn.dataset.delTx);
+          await saveState();
+          renderTab('historique');
+        });
+      });
     }
     if(tab==='global'){
       document.querySelectorAll('[data-global-mode]').forEach(btn=>{
