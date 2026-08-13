@@ -14,8 +14,10 @@
     --ink: #2B2620;
     --ink-soft: #6B6355;
     --line: #D2C9B4;
-    --copper: #A85C2E;
-    --copper-soft: #E6C9AE;
+    --copper: #963E88;
+    --copper-soft: #EAD7E6;
+    --wave-1: #B23C92;
+    --wave-2: #5B2A66;
     --green: #4E6647;
     --green-soft: #DCE4D2;
     --warn: #A13B2F;
@@ -165,9 +167,11 @@
 
   .login-screen{ display:none; min-height:100vh; align-items:center; justify-content:center; padding: 20px; }
   .login-card{ background: var(--panel); border:1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 24px; width: 100%; max-width: 360px; }
-  .login-card .brand{ justify-content:center; margin-bottom: 18px; }
+  .login-card .brand{ justify-content:center; margin-bottom: 4px; }
   .login-card form{ display:flex; flex-direction:column; gap:12px; }
   .login-card .btn{ width:100%; margin-top:4px; }
+  .brand-wave{ display:block; width:100%; height:14px; margin:2px 0 18px; }
+  header.app-header .brand-wave{ margin:10px 0 4px; }
   .role-badge{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding: 5px 10px; border-radius:999px; }
   .role-badge.editor{ background: var(--green-soft); color: var(--green); }
   .role-badge.viewer{ background: var(--blue-soft); color: var(--blue); }
@@ -188,17 +192,26 @@
   <div class="login-card">
     <div class="brand">
       <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="24" cy="30" rx="13" ry="15" fill="#A85C2E"/>
-        <ellipse cx="24" cy="30" rx="13" ry="15" fill="url(#g2)" opacity="0.5"/>
-        <path d="M24 15C22 9 20 6 17 3" stroke="#4E6647" stroke-width="2.5" stroke-linecap="round"/>
-        <path d="M24 15C25.5 9 27 6 30 3" stroke="#4E6647" stroke-width="2.5" stroke-linecap="round"/>
-        <defs><linearGradient id="g2" x1="11" y1="15" x2="37" y2="45"><stop stop-color="#D98B54"/><stop offset="1" stop-color="#8B4423"/></linearGradient></defs>
+        <ellipse cx="18" cy="29" rx="11" ry="12" fill="url(#gOnionLogin)"/>
+        <path d="M18 17C16.5 12 15 9 12 6" stroke="#4E6647" stroke-width="2" stroke-linecap="round"/>
+        <ellipse cx="32" cy="27" rx="8.5" ry="14" fill="url(#gShallotLogin)"/>
+        <path d="M32 13C31 8 30.5 5 29 2" stroke="#4E6647" stroke-width="2" stroke-linecap="round"/>
+        <defs>
+          <linearGradient id="gOnionLogin" x1="7" y1="17" x2="29" y2="41"><stop stop-color="#B23C92"/><stop offset="1" stop-color="#5B2A66"/></linearGradient>
+          <linearGradient id="gShallotLogin" x1="23.5" y1="13" x2="40.5" y2="41"><stop stop-color="#8C8577"/><stop offset="1" stop-color="#5C564A"/></linearGradient>
+        </defs>
       </svg>
       <div>
         <h1>Plan de stockage</h1>
         <p>Connexion requise</p>
       </div>
     </div>
+    <svg class="brand-wave" viewBox="0 0 300 24" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0 14 C40 22, 80 4, 130 12 C180 20, 220 2, 300 10" style="stroke:url(#waveGradLogin)" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <defs><linearGradient id="waveGradLogin" x1="0" y1="0" x2="300" y2="0">
+        <stop offset="0" style="stop-color:var(--wave-1)"/><stop offset="1" style="stop-color:var(--wave-2)"/>
+      </linearGradient></defs>
+    </svg>
     <form id="loginForm">
       <label class="field">Email<input type="email" id="loginEmail" autocomplete="username" required></label>
       <label class="field">Mot de passe<input type="password" id="loginPassword" autocomplete="current-password" required></label>
@@ -212,11 +225,14 @@
   <header class="app-header">
     <div class="brand">
       <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="24" cy="30" rx="13" ry="15" fill="#A85C2E"/>
-        <ellipse cx="24" cy="30" rx="13" ry="15" fill="url(#g)" opacity="0.5"/>
-        <path d="M24 15C22 9 20 6 17 3" stroke="#4E6647" stroke-width="2.5" stroke-linecap="round"/>
-        <path d="M24 15C25.5 9 27 6 30 3" stroke="#4E6647" stroke-width="2.5" stroke-linecap="round"/>
-        <defs><linearGradient id="g" x1="11" y1="15" x2="37" y2="45"><stop stop-color="#D98B54"/><stop offset="1" stop-color="#8B4423"/></linearGradient></defs>
+        <ellipse cx="18" cy="29" rx="11" ry="12" fill="url(#gOnionHeader)"/>
+        <path d="M18 17C16.5 12 15 9 12 6" stroke="#4E6647" stroke-width="2" stroke-linecap="round"/>
+        <ellipse cx="32" cy="27" rx="8.5" ry="14" fill="url(#gShallotHeader)"/>
+        <path d="M32 13C31 8 30.5 5 29 2" stroke="#4E6647" stroke-width="2" stroke-linecap="round"/>
+        <defs>
+          <linearGradient id="gOnionHeader" x1="7" y1="17" x2="29" y2="41"><stop stop-color="#B23C92"/><stop offset="1" stop-color="#5B2A66"/></linearGradient>
+          <linearGradient id="gShallotHeader" x1="23.5" y1="13" x2="40.5" y2="41"><stop stop-color="#8C8577"/><stop offset="1" stop-color="#5C564A"/></linearGradient>
+        </defs>
       </svg>
       <div>
         <h1>Plan de stockage</h1>
@@ -225,6 +241,12 @@
     </div>
     <div class="header-stats" id="headerStats"></div>
   </header>
+  <svg class="brand-wave" viewBox="0 0 300 24" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0 14 C40 22, 80 4, 130 12 C180 20, 220 2, 300 10" style="stroke:url(#waveGradHeader)" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <defs><linearGradient id="waveGradHeader" x1="0" y1="0" x2="300" y2="0">
+      <stop offset="0" style="stop-color:var(--wave-1)"/><stop offset="1" style="stop-color:var(--wave-2)"/>
+    </linearGradient></defs>
+  </svg>
 
   <nav class="tabs" id="tabs">
     <button data-tab="stockage" class="active">Stockage</button>
