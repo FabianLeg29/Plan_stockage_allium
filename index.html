@@ -265,7 +265,7 @@
 
   // Chaque entrée de state.lots représente UN palox physique (pas un lot agrégé).
   // Plusieurs palox entrés ensemble partagent le même batchId, pour l'affichage groupé "par lot".
-  let state = { cellules: [], lots: [], transactions: [] };
+  let state = { cellules: [], lots: [], transactions: [], produits: [] };
   let loaded = false;
   let currentTab = 'stockage';
   let currentCelluleId = null;
@@ -280,7 +280,7 @@
   function isPanelOpen(){ return document.getElementById('detailPanel').classList.contains('open'); }
 
   function applyIncomingState(raw){
-    if(raw){ try{ state = JSON.parse(raw); }catch(e){ state = { cellules:[], lots:[], transactions:[] }; } }
+    if(raw){ try{ state = JSON.parse(raw); }catch(e){ state = { cellules:[], lots:[], transactions:[], produits:[] }; } }
     migrate();
     if(!currentCelluleId || !getCellule(currentCelluleId)) currentCelluleId = state.cellules[0] ? state.cellules[0].id : null;
   }
@@ -288,7 +288,7 @@
     if(unsubscribeSnapshot) unsubscribeSnapshot();
     unsubscribeSnapshot = DOC_REF.onSnapshot(async (snap)=>{
       if(!snap.exists){
-        state = { cellules: [], lots: [], transactions: [] };
+        state = { cellules: [], lots: [], transactions: [], produits: [] };
         if(canManageStock()){ seedDefault(); applyIncomingState(null); }
         loaded = true;
         render();
@@ -379,6 +379,9 @@
   function migrate(){
     // Anciens modèles : ligne { positions, hauteurParPosition }, lot { position, hauteurDebut, nbPalox, poids total }.
     // Nouveau modèle : ligne { capacite }, lot = UN palox individuel { poids unitaire, batchId }.
+    if(!Array.isArray(state.produits)){
+      state.produits = ['Echalote','Echalion','Echalote de semis','Oignon de Roscoff','Oignon rouge','Oignon jaune'];
+    }
     state.cellules.forEach(c=>{
       c.lignes.forEach(l=>{
         if(l.capacite==null){
@@ -732,7 +735,7 @@
     return '<div class="selection-recap">'+paloxs.length+' palox sélectionné(s) — les champs ci-dessous s\'appliquent à toute la sélection</div>'+
       '<div class="entree-row" data-modifier-row>'+
         '<div class="grid-form two">'+
-          '<label class="field">Produit<input type="text" data-f="produit" value="'+escapeHtml(first.produit||'')+'" required></label>'+
+          '<label class="field">Produit<select data-f="produit" required>'+produitOptionsHtml(first.produit||'')+'</select></label>'+
           '<label class="field">Lot<input type="text" data-f="lot" value="'+escapeHtml(first.lot||'')+'"></label>'+
           '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" value="'+escapeHtml(first.lot2||'')+'"></label>'+
           '<label class="field">Parcelle<input type="text" data-f="parcelle" value="'+escapeHtml(first.parcelle||'')+'"></label>'+
@@ -872,6 +875,14 @@
   function celluleOptionsHtml(selectedCelluleId){
     return state.cellules.map(c=>'<option value="'+c.id+'" '+(c.id===selectedCelluleId?'selected':'')+'>'+escapeHtml(c.nom)+'</option>').join('');
   }
+  function produitOptionsHtml(selected){
+    const list = (state.produits||[]).slice().sort((a,b)=>a.localeCompare(b,'fr'));
+    let opts = list.map(p=>'<option value="'+escapeHtml(p)+'" '+(p===selected?'selected':'')+'>'+escapeHtml(p)+'</option>').join('');
+    if(selected && !list.includes(selected)){
+      opts = '<option value="'+escapeHtml(selected)+'" selected>'+escapeHtml(selected)+' (hors liste)</option>'+opts;
+    }
+    return '<option value="" '+(!selected?'selected':'')+' disabled>Choisir…</option>'+opts;
+  }
 
   function bulkRowHtml(idx){
     const c0 = state.cellules[0];
@@ -879,7 +890,7 @@
       '<div class="grid-form two">'+
         '<label class="field">Cellule<select data-f="cellule">'+celluleOptionsHtml(c0.id)+'</select></label>'+
         '<label class="field">Ligne<select data-f="ligne">'+ligneOptionsHtml(c0.id)+'</select></label>'+
-        '<label class="field">Produit<input type="text" data-f="produit" placeholder="ECHALOTE" required></label>'+
+        '<label class="field">Produit<select data-f="produit" required>'+produitOptionsHtml('')+'</select></label>'+
         '<label class="field">Lot<input type="text" data-f="lot" placeholder="L167GB03"></label>'+
         '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" placeholder="si palox mixte"></label>'+
         '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
@@ -1165,6 +1176,20 @@
     return '<div class="card"><h2>Comptes</h2>'+
       '<p class="sub">Comptes autorisés et leur rôle. La création d\'un nouveau compte (email + mot de passe) se fait toujours depuis la console Firebase ; ajoute-le ensuite ici avec son email et son rôle pour qu\'il apparaisse dans cette liste.</p>'+
       '<div id="comptesList"><div class="loading" style="padding:24px 0;">Chargement des comptes…</div></div>'+
+    '</div>'+viewProduitsAdmin();
+  }
+  function viewProduitsAdmin(){
+    const list = (state.produits||[]).slice().sort((a,b)=>a.localeCompare(b,'fr'));
+    const rows = list.map(p=>{
+      return '<div class="ligne-row">'+
+          '<input type="text" value="'+escapeHtml(p)+'" data-produit-old="'+escapeHtml(p)+'">'+
+          '<button class="del-btn" data-del-produit="'+escapeHtml(p)+'">supprimer</button>'+
+      '</div>';
+    }).join('');
+    return '<div class="card"><h2>Produits</h2>'+
+      '<p class="sub">Liste des produits proposés lors d\'une entrée de stock (bouton « + Entrée »), pour que tout le monde saisisse toujours le même intitulé.</p>'+
+      (list.length ? rows : emptyState("Aucun produit", "Ajoute au moins un produit pour pouvoir enregistrer une entrée de stock."))+
+      '<button class="btn btn-copper btn-sm" id="addProduit" style="margin-top:8px;">+ Nouveau produit</button>'+
     '</div>';
   }
   async function loadComptesList(){
@@ -1310,6 +1335,36 @@
     }
     if(tab==='comptes'){
       loadComptesList();
+      document.querySelectorAll('[data-produit-old]').forEach(inp=>{
+        inp.addEventListener('change', async ()=>{
+          const oldName = inp.dataset.produitOld;
+          const newName = inp.value.trim();
+          if(!newName){ inp.value = oldName; return; }
+          if(newName!==oldName && (state.produits||[]).some(p=>p.toLowerCase()===newName.toLowerCase())){
+            alert('Ce produit existe déjà dans la liste.'); inp.value = oldName; return;
+          }
+          const idx = state.produits.indexOf(oldName);
+          if(idx>-1) state.produits[idx] = newName;
+          await saveState(); renderTab('comptes');
+        });
+      });
+      document.querySelectorAll('[data-del-produit]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const nom = btn.dataset.delProduit;
+          if(!confirm('Supprimer « '+nom+' » de la liste ? Les entrées déjà enregistrées avec ce produit ne sont pas affectées.')) return;
+          state.produits = state.produits.filter(p=>p!==nom);
+          await saveState(); renderTab('comptes');
+        });
+      });
+      const addProduitBtn = document.getElementById('addProduit');
+      if(addProduitBtn) addProduitBtn.addEventListener('click', async ()=>{
+        const nom = prompt('Nom du nouveau produit :', '');
+        if(!nom || !nom.trim()) return;
+        const trimmed = nom.trim();
+        if((state.produits||[]).some(p=>p.toLowerCase()===trimmed.toLowerCase())){ alert('Ce produit existe déjà dans la liste.'); return; }
+        state.produits.push(trimmed);
+        await saveState(); renderTab('comptes');
+      });
     }
   }
 
