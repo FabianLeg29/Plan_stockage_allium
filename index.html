@@ -781,7 +781,7 @@
           '<label class="field">Lot<input type="text" data-f="lot" value="'+escapeHtml(first.lot||'')+'"></label>'+
           '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" value="'+escapeHtml(first.lot2||'')+'"></label>'+
           '<label class="field">Parcelle<input type="text" data-f="parcelle" value="'+escapeHtml(first.parcelle||'')+'"></label>'+
-          '<label class="field">Calibre<select data-f="calibre">'+calibreOptionsHtml(first.calibre||'')+'</select></label>'+
+          '<label class="field">Calibre<select data-f="calibre" required>'+calibreOptionsHtml(first.calibre||'')+'</select></label>'+
           '<label class="field checkbox-field"><input type="checkbox" data-f="traitement" '+(first.traitement?'checked':'')+'> Traitement antigerme</label>'+
           '<label class="field">Date<input type="date" data-f="dateEntree" value="'+escapeHtml(first.dateEntree||today())+'"></label>'+
           '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" value="'+escapeHtml(first.commentaire||'')+'"></label>'+
@@ -887,6 +887,7 @@
         const lot2Val = get('lot2').trim();
         const parcelle = get('parcelle').trim();
         const calibre = get('calibre').trim();
+        if(!calibre){ msg.textContent = '✗ Le calibre est obligatoire'; msg.className='msg err'; return; }
         const traitement = row.querySelector('[data-f="traitement"]').checked;
         const dateEntree = get('dateEntree');
         const commentaire = get('commentaire').trim();
@@ -934,7 +935,7 @@
     if(selected && !list.includes(selected)){
       opts = '<option value="'+escapeHtml(selected)+'" selected>'+escapeHtml(selected)+' (hors liste)</option>'+opts;
     }
-    return '<option value="" '+(!selected?'selected':'')+'>—</option>'+opts;
+    return '<option value="" '+(!selected?'selected':'')+' disabled>Choisir…</option>'+opts;
   }
 
   function bulkRowHtml(idx, presetCelluleId, presetLigneId){
@@ -947,7 +948,7 @@
         '<label class="field">Lot<input type="text" data-f="lot" placeholder="L167GB03"></label>'+
         '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" placeholder="si palox mixte"></label>'+
         '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
-        '<label class="field">Calibre<select data-f="calibre">'+calibreOptionsHtml('')+'</select></label>'+
+        '<label class="field">Calibre<select data-f="calibre" required>'+calibreOptionsHtml('')+'</select></label>'+
         '<label class="field checkbox-field"><input type="checkbox" data-f="traitement"> Traitement antigerme</label>'+
         '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required></label>'+
         '<label class="field span-2">Commentaire<input type="text" data-f="commentaire"></label>'+
@@ -1029,6 +1030,7 @@
         const lot2Val = row.querySelector('[data-f="lot2"]').value.trim();
         const parcelle = row.querySelector('[data-f="parcelle"]').value.trim();
         const calibre = row.querySelector('[data-f="calibre"]').value.trim();
+        if(!calibre){ errors.push('Ligne #'+(idx+1)+' : calibre manquant'); return; }
         const traitement = row.querySelector('[data-f="traitement"]').checked;
         const weightsEl = row.querySelector('.palox-weights');
         const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
