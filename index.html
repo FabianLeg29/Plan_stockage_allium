@@ -144,6 +144,7 @@
   .tag.entree{ background: var(--green-soft); color: var(--green); }
   .tag.sortie{ background: var(--warn-soft); color: var(--warn); }
   .tag.deplacement{ background: var(--copper-soft); color: var(--copper); }
+  .tag.modification{ background: var(--blue-soft); color: var(--blue); }
 
   .search-box{ position:relative; margin-bottom:14px; }
   .search-box input{ width:100%; font-family:'Inter'; font-size:16px; padding:12px 14px 12px 40px; border-radius:9px; border:1.5px solid var(--line); background:#fff; }
@@ -472,7 +473,10 @@
     const c = getCellule(celluleId), l = getLigne(celluleId, ligneId);
     return (c?c.nom:'?') + " — " + (l?l.nom:'?');
   }
-  function addTx(type, data){ state.transactions.unshift(Object.assign({ id: uid(), type, date: data.date || today() }, data)); }
+  function addTx(type, data){
+    const responsable = (auth.currentUser && auth.currentUser.email) || '?';
+    state.transactions.unshift(Object.assign({ id: uid(), type, date: data.date || today(), responsable }, data));
+  }
   function totalPalox(){ return state.lots.length; }
   const FIXED_PRODUCT_COLORS = [
     { test: n=> n.includes('semis') && n.includes('echalote'), color: '#8E6BA8' },   // échalote de semis — mauve
@@ -895,6 +899,7 @@
           state.lots.push({ id: p.id, celluleId: p.celluleId, ligneId: p.ligneId, batchId: newBatchId,
             produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree, commentaire });
         });
+        addTx('modification', { quantite: paloxs.length, produit, lot: lotVal, lot2: lot2Val, date: today(), commentaire, label: caseLabel(first.celluleId, first.ligneId) });
       }
       await saveState();
       renderHeaderStats();
@@ -1206,18 +1211,20 @@
   }
   function txTable(txs){
     if(txs.length===0) return emptyState("Aucun mouvement enregistré", "L'historique se remplit à chaque entrée, sortie ou déplacement.");
+    const typeLabels = { entree:'Entrée', sortie:'Sortie', deplacement:'Déplacement', modification:'Modification' };
     const rows = txs.map(t=>{
-      const typeLabel = t.type==='entree' ? 'Entrée' : t.type==='sortie' ? 'Sortie' : 'Déplacement';
+      const typeLabel = typeLabels[t.type] || t.type;
       const posHtml = t.type==='deplacement' ? ('<span class="mono">'+escapeHtml(t.fromLabel)+'</span> → <span class="mono">'+escapeHtml(t.toLabel)+'</span>') : ('<span class="mono">'+escapeHtml(t.label)+'</span>');
       return '<tr><td>'+fmtDate(t.date)+'</td><td><span class="tag '+t.type+'">'+typeLabel+'</span></td>'+
         '<td>'+escapeHtml(t.produit||'—')+(t.lot? ' ('+escapeHtml(t.lot)+(t.lot2?' + '+escapeHtml(t.lot2):'')+')':'')+'</td>'+
         '<td>'+posHtml+'</td><td class="mono">'+fmt(t.quantite)+'</td>'+
         '<td class="mono">'+(t.poids!=null? fmt(t.poids)+' kg':'—')+'</td>'+
         '<td>'+escapeHtml(t.commentaire||'—')+'</td>'+
+        '<td>'+escapeHtml(t.responsable||'—')+'</td>'+
         (isAdmin() ? '<td><button class="del-btn" data-del-tx="'+t.id+'">supprimer</button></td>' : '')+
       '</tr>';
     }).join('');
-    return '<div class="table-scroll"><table class="data"><thead><tr><th>Date</th><th>Type</th><th>Produit</th><th>Emplacement</th><th>Palox</th><th>Poids</th><th>Commentaire</th>'+(isAdmin()?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    return '<div class="table-scroll"><table class="data"><thead><tr><th>Date</th><th>Type</th><th>Produit</th><th>Emplacement</th><th>Palox</th><th>Poids</th><th>Commentaire</th><th>Responsable</th>'+(isAdmin()?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
 
   // ---------- CELLULES (config) ----------
