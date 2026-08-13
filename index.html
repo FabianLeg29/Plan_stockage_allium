@@ -85,6 +85,8 @@
   label.field.span-full{ grid-column: 1/-1; }
   @media (max-width:480px){ label.field.span-2{ grid-column: span 1; } }
   label.field .hint{ font-size:11px; text-transform:none; letter-spacing:normal; font-weight:500; color:var(--ink-soft); margin-top:2px; }
+  label.field.checkbox-field{ flex-direction:row; align-items:center; gap:8px; }
+  label.field.checkbox-field input[type=checkbox]{ width:18px; height:18px; padding:0; flex:none; }
 
   .btn{ font-family:'Inter', sans-serif; font-weight: 700; font-size: 13.5px; cursor:pointer; border:none; border-radius: 8px; padding: 11px 18px; }
   .btn:active{ transform: scale(0.98); }
@@ -550,8 +552,11 @@
         '<div class="lli-produits">'+breakdown.map(b=>'<button type="button" class="produit-chip" style="background:'+colorForProduit(b.produit)+'" data-produit-jump="'+c.id+'|'+l.id+'|'+encodeURIComponent(b.produit)+'">'+escapeHtml(b.produit)+' ('+b.count+')</button>').join('')+'</div>' :
         '<div class="lli-empty">Vide</div>';
       const complet = occ>=l.capacite ? ' <span style="color:var(--warn);font-weight:700;">· Complet</span>' : '';
+      const ligneEntreeBtn = canManageStock() ? '<button type="button" class="btn btn-green btn-sm" data-ligne-entree="'+c.id+'|'+l.id+'">+ Entrée</button>' : '';
       return '<div class="ligne-list-item" data-cellule="'+c.id+'" data-ligne="'+l.id+'">'+
-        '<div class="lli-head"><h3>'+escapeHtml(l.nom)+'</h3><span class="lli-count">'+occ+' / '+l.capacite+' palox · '+Math.round(pct)+'%'+complet+'</span></div>'+
+        '<div class="lli-head"><h3>'+escapeHtml(l.nom)+'</h3>'+
+          '<div style="display:flex;align-items:center;gap:10px;"><span class="lli-count">'+occ+' / '+l.capacite+' palox · '+Math.round(pct)+'%'+complet+'</span>'+ligneEntreeBtn+'</div>'+
+        '</div>'+
         '<div class="fill-track">'+segs+'</div>'+
         chips+
       '</div>';
@@ -591,7 +596,7 @@
       '<div class="lp-meta">Lot <span>'+escapeHtml(batch.lot||'—')+(batch.lot2? ' + '+escapeHtml(batch.lot2):'')+'</span>'+
         (batch.parcelle? ' · Parcelle <span>'+escapeHtml(batch.parcelle)+'</span>':'')+
         (batch.calibre? ' · Calibre <span>'+escapeHtml(batch.calibre)+'</span>':'')+
-        (batch.traitement? ' · '+escapeHtml(batch.traitement):'')+
+        (batch.traitement? ' · Antigerme':'')+
         '<br>entré le '+fmtDate(batch.dateEntree)+
         (batch.commentaire? '<br>« '+escapeHtml(batch.commentaire)+' »':'')+
       '</div>'+
@@ -740,7 +745,7 @@
           '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" value="'+escapeHtml(first.lot2||'')+'"></label>'+
           '<label class="field">Parcelle<input type="text" data-f="parcelle" value="'+escapeHtml(first.parcelle||'')+'"></label>'+
           '<label class="field">Calibre<input type="text" data-f="calibre" value="'+escapeHtml(first.calibre||'')+'"></label>'+
-          '<label class="field">Traitement<input type="text" data-f="traitement" value="'+escapeHtml(first.traitement||'')+'"></label>'+
+          '<label class="field checkbox-field"><input type="checkbox" data-f="traitement" '+(first.traitement?'checked':'')+'> Traitement antigerme</label>'+
           '<label class="field">Date<input type="date" data-f="dateEntree" value="'+escapeHtml(first.dateEntree||today())+'"></label>'+
           '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" value="'+escapeHtml(first.commentaire||'')+'"></label>'+
         '</div>'+
@@ -845,7 +850,7 @@
         const lot2Val = get('lot2').trim();
         const parcelle = get('parcelle').trim();
         const calibre = get('calibre').trim();
-        const traitement = get('traitement').trim();
+        const traitement = row.querySelector('[data-f="traitement"]').checked;
         const dateEntree = get('dateEntree');
         const commentaire = get('commentaire').trim();
         const weightsEl = row.querySelector('.palox-weights');
@@ -884,18 +889,18 @@
     return '<option value="" '+(!selected?'selected':'')+' disabled>Choisir…</option>'+opts;
   }
 
-  function bulkRowHtml(idx){
-    const c0 = state.cellules[0];
+  function bulkRowHtml(idx, presetCelluleId, presetLigneId){
+    const c0 = (presetCelluleId && getCellule(presetCelluleId)) || state.cellules[0];
     return '<div class="entree-row" data-row-idx="'+idx+'">'+
       '<div class="grid-form two">'+
         '<label class="field">Cellule<select data-f="cellule">'+celluleOptionsHtml(c0.id)+'</select></label>'+
-        '<label class="field">Ligne<select data-f="ligne">'+ligneOptionsHtml(c0.id)+'</select></label>'+
+        '<label class="field">Ligne<select data-f="ligne">'+ligneOptionsHtml(c0.id, presetLigneId)+'</select></label>'+
         '<label class="field">Produit<select data-f="produit" required>'+produitOptionsHtml('')+'</select></label>'+
         '<label class="field">Lot<input type="text" data-f="lot" placeholder="L167GB03"></label>'+
         '<label class="field">2e numéro de lot — optionnel<input type="text" data-f="lot2" placeholder="si palox mixte"></label>'+
         '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
         '<label class="field">Calibre<input type="text" data-f="calibre" placeholder="30/40"></label>'+
-        '<label class="field">Traitement<input type="text" data-f="traitement" placeholder="TRESSE, RDF, BIO…"></label>'+
+        '<label class="field checkbox-field"><input type="checkbox" data-f="traitement"> Traitement antigerme</label>'+
         '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required></label>'+
         '<label class="field span-2">Commentaire<input type="text" data-f="commentaire"></label>'+
       '</div>'+
@@ -907,14 +912,14 @@
 
   let bulkRowCounter = 0;
 
-  function openBulkEntreePanel(){
+  function openBulkEntreePanel(celluleId, ligneId){
     bulkRowCounter = 0;
     const panel = document.getElementById('detailPanel');
     panel.innerHTML =
       '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>Entrée</h3><p>Ajoute du stock — une ligne de saisie par produit/emplacement, sur une ou plusieurs lignes.</p></div>'+
       '<div class="detail-body">'+
         '<form id="bulkForm">'+
-          '<div id="bulkRows">'+bulkRowHtml(0)+'</div>'+
+          '<div id="bulkRows">'+bulkRowHtml(0, celluleId, ligneId)+'</div>'+
           '<button type="button" class="btn btn-ghost btn-sm" id="addBulkRow" style="margin-top:4px;">+ Ajouter une ligne de saisie</button>'+
           '<div class="grid-form two" style="margin-top:12px;"><label class="field">Date<input type="date" name="bulkDate" value="'+today()+'" required></label></div>'+
           '<div class="btn-row"><button class="btn btn-green" type="submit">Valider</button><span class="msg" id="bulkMsg"></span></div>'+
@@ -976,7 +981,7 @@
         const lot2Val = row.querySelector('[data-f="lot2"]').value.trim();
         const parcelle = row.querySelector('[data-f="parcelle"]').value.trim();
         const calibre = row.querySelector('[data-f="calibre"]').value.trim();
-        const traitement = row.querySelector('[data-f="traitement"]').value.trim();
+        const traitement = row.querySelector('[data-f="traitement"]').checked;
         const weightsEl = row.querySelector('.palox-weights');
         const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
         const commentaire = row.querySelector('[data-f="commentaire"]').value.trim();
@@ -1026,7 +1031,7 @@
         '<label class="field">Lot<input type="text" id="filterLot" placeholder="ex : L070GA43"></label>'+
       '</div>'+
       '<div class="search-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'+
-      '<input type="text" id="searchInput" placeholder="recherche libre : parcelle, traitement…"></div>'+
+      '<input type="text" id="searchInput" placeholder="recherche libre : parcelle…"></div>'+
       '<div id="searchResults">'+searchResultsHtml({})+'</div></div>';
   }
   function currentSearchFilters(){
@@ -1050,7 +1055,7 @@
     if(filters.produit) batches = batches.filter(b=>b.produit===filters.produit);
     if(filters.calibre) batches = batches.filter(b=>b.calibre===filters.calibre);
     if(lotText) batches = batches.filter(b=>(b.lot||'').toLowerCase().includes(lotText) || (b.lot2||'').toLowerCase().includes(lotText));
-    if(q) batches = batches.filter(b => [b.produit,b.lot,b.lot2,b.parcelle,b.calibre,b.traitement].some(f => (f||'').toLowerCase().includes(q)));
+    if(q) batches = batches.filter(b => [b.produit,b.lot,b.lot2,b.parcelle,b.calibre,(b.traitement?'antigerme':'')].some(f => (f||'').toLowerCase().includes(q)));
     const anyFilter = q || filters.celluleId || filters.produit || filters.calibre || lotText;
     const totalPaloxCount = batches.reduce((s,b)=>s+b.paloxs.length,0);
     const totalKnown = batches.reduce((s,b)=>s+batchPoidsSummary(b).total,0);
@@ -1061,7 +1066,7 @@
       const summary = batchPoidsSummary(b);
       const poidsStr = summary.total>0 ? (fmt(summary.total)+' kg'+(summary.unknown>0?' (partiel)':'')) : '—';
       return '<tr><td>'+escapeHtml(b.produit)+'</td><td class="mono">'+escapeHtml(b.lot||'—')+(b.lot2? ' + '+escapeHtml(b.lot2):'')+'</td>'+
-        '<td>'+escapeHtml(b.parcelle||'—')+'</td><td>'+escapeHtml(b.calibre||'—')+'</td><td>'+escapeHtml(b.traitement||'—')+'</td>'+
+        '<td>'+escapeHtml(b.parcelle||'—')+'</td><td>'+escapeHtml(b.calibre||'—')+'</td><td>'+(b.traitement?'Antigerme':'—')+'</td>'+
         '<td class="mono">'+b.paloxs.length+'</td>'+
         '<td class="mono">'+poidsStr+'</td>'+
         '<td>'+escapeHtml(caseLabel(b.celluleId,b.ligneId))+'</td></tr>';
@@ -1253,8 +1258,15 @@
           openLigneDetail(cId, lId, decodeURIComponent(prod));
         });
       });
+      document.querySelectorAll('[data-ligne-entree]').forEach(btn=>{
+        btn.addEventListener('click', (ev)=>{
+          ev.stopPropagation();
+          const [cId,lId] = btn.dataset.ligneEntree.split('|');
+          openBulkEntreePanel(cId, lId);
+        });
+      });
       const bulkBtn = document.getElementById('openBulkEntree');
-      if(bulkBtn) bulkBtn.addEventListener('click', openBulkEntreePanel);
+      if(bulkBtn) bulkBtn.addEventListener('click', ()=>openBulkEntreePanel());
     }
     if(tab==='recherche'){
       document.getElementById('searchInput').addEventListener('input', refreshSearchResults);
