@@ -433,6 +433,14 @@
       }
     });
     state.lots = expanded;
+    // Fusionne les lots identiques (même produit/lot/calibre/traitement/emplacement) sous un seul batchId,
+    // pour éviter que des modifications successives ne fragmentent artificiellement un même lot.
+    const batchKeyMap = {};
+    state.lots.forEach(l=>{
+      const key = [l.celluleId, l.ligneId, l.produit, l.lot||'', l.lot2||'', l.calibre||'', !!l.traitement].join('|');
+      if(batchKeyMap[key]==null) batchKeyMap[key] = l.batchId;
+      else l.batchId = batchKeyMap[key];
+    });
   }
 
   function seedDefault(){
@@ -877,8 +885,10 @@
         const commentaire = get('commentaire').trim();
         const weightsEl = row.querySelector('.palox-weights');
         const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
-        const newBatchId = uid();
         const idSet = new Set(ids);
+        const existingMatch = state.lots.find(l => !idSet.has(l.id) && l.celluleId===first.celluleId && l.ligneId===first.ligneId &&
+          l.produit===produit && (l.lot||'')===lotVal && (l.lot2||'')===lot2Val && (l.calibre||'')===calibre && !!l.traitement===traitement);
+        const newBatchId = existingMatch ? existingMatch.batchId : uid();
         state.lots = state.lots.filter(l=>!idSet.has(l.id));
         paloxs.forEach((p,idx)=>{
           const { poids: poidsUnit, poidsLot2: poidsLot2Unit } = resolvePaloxWeight(paloxStates[idx]);
@@ -926,7 +936,7 @@
         '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required></label>'+
         '<label class="field span-2">Commentaire<input type="text" data-f="commentaire"></label>'+
       '</div>'+
-      '<div class="hint" style="display:block;margin-top:10px;">Poids par palox (kg) — optionnel, laisse vide si inconnu</div>'+
+      '<div class="hint" style="display:block;margin-top:10px;">Poids par palox (kg) — obligatoire</div>'+
       '<div class="palox-weights">'+paloxWeightInputsHtml(1)+'</div>'+
       (idx>0 ? '<button type="button" class="btn btn-ghost btn-sm" data-remove-row style="margin-top:8px;">Retirer cette ligne de saisie</button>' : '')+
     '</div>';
@@ -1007,14 +1017,17 @@
         const weightsEl = row.querySelector('.palox-weights');
         const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
         const commentaire = row.querySelector('[data-f="commentaire"]').value.trim();
+        const resolved = [];
+        for(let n=0;n<count;n++) resolved.push(resolvePaloxWeight(paloxStates[n]));
+        const missingWeight = resolved.some(r => r.poids==null || (lot2Val && r.poidsLot2==null));
+        if(missingWeight){ errors.push('Ligne #'+(idx+1)+' : le poids de chaque palox est obligatoire'+(lot2Val?' (lot 1 et lot 2)':'')); return; }
         const batchId = uid();
         const poidsKnown = [];
-        for(let n=0;n<count;n++){
-          const { poids: poidsUnit, poidsLot2: poidsLot2Unit } = resolvePaloxWeight(paloxStates[n]);
-          if(poidsUnit!=null || poidsLot2Unit!=null) poidsKnown.push((poidsUnit||0) + (poidsLot2Unit||0));
+        resolved.forEach(({poids: poidsUnit, poidsLot2: poidsLot2Unit})=>{
+          poidsKnown.push((poidsUnit||0) + (poidsLot2Unit||0));
           state.lots.push({ id: uid(), celluleId, ligneId, batchId, produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree: dateVal, commentaire });
-        }
-        const poidsTotal = poidsKnown.length ? poidsKnown.reduce((a,b)=>a+b,0) : null;
+        });
+        const poidsTotal = poidsKnown.reduce((a,b)=>a+b,0);
         addTx('entree', { quantite: count, poids: poidsTotal, produit, lot: lotVal, lot2: lot2Val, date: dateVal, commentaire, label: caseLabel(celluleId,ligneId) });
         applied++;
       });
