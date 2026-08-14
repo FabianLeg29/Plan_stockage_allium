@@ -1084,7 +1084,7 @@
         '<label class="field">Lot<input type="text" id="filterLot" placeholder="ex : L070GA43"></label>'+
       '</div>'+
       '<div class="search-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'+
-      '<input type="text" id="searchInput" placeholder="recherche libre : parcelle…"></div>'+
+      '<input type="text" id="searchInput" placeholder="recherche libre : parcelle, commentaire, emplacement…"></div>'+
       '<div class="btn-row" style="margin-top:10px;"><button type="button" class="btn btn-blue btn-sm" id="exportStockBtn">Exporter en Excel (.csv)</button></div>'+
       '<div id="searchResults">'+searchResultsHtml({})+'</div></div>';
   }
@@ -1109,7 +1109,7 @@
     if(filters.produit) batches = batches.filter(b=>b.produit===filters.produit);
     if(filters.calibre) batches = batches.filter(b=>b.calibre===filters.calibre);
     if(lotText) batches = batches.filter(b=>(b.lot||'').toLowerCase().includes(lotText) || (b.lot2||'').toLowerCase().includes(lotText));
-    if(q) batches = batches.filter(b => [b.produit,b.lot,b.lot2,b.parcelle,b.calibre,(b.traitement?'antigerme':'')].some(f => (f||'').toLowerCase().includes(q)));
+    if(q) batches = batches.filter(b => [b.produit,b.lot,b.lot2,b.parcelle,b.calibre,(b.traitement?'antigerme':''),b.commentaire,caseLabel(b.celluleId,b.ligneId)].some(f => (f||'').toLowerCase().includes(q)));
     return batches;
   }
   function csvEscape(v){
@@ -1152,16 +1152,33 @@
     const totalUnknown = batches.reduce((s,b)=>s+batchPoidsSummary(b).unknown,0);
     const totalHtml = '<div class="consult-total"><span>Total affiché</span><span>'+totalPaloxCount+' palox · '+fmt(totalKnown)+' kg'+(totalUnknown>0?' connus ('+totalUnknown+' palox sans poids)':'')+'</span></div>';
     if(batches.length===0) return emptyState(anyFilter? "Aucun résultat" : "Aucun palox enregistré", anyFilter? "Essaie d'élargir tes critères." : "Filtre par cellule, produit, calibre, lot — ou tape une recherche libre.")+totalHtml;
-    const rows = batches.map(b=>{
-      const summary = batchPoidsSummary(b);
-      const poidsStr = summary.total>0 ? (fmt(summary.total)+' kg'+(summary.unknown>0?' (partiel)':'')) : '—';
-      return '<tr><td>'+escapeHtml(b.produit)+'</td><td class="mono">'+escapeHtml(b.lot||'—')+(b.lot2? ' + '+escapeHtml(b.lot2):'')+'</td>'+
-        '<td>'+escapeHtml(b.parcelle||'—')+'</td><td>'+escapeHtml(b.calibre||'—')+'</td><td>'+(b.traitement?'Antigerme':'—')+'</td>'+
-        '<td class="mono">'+b.paloxs.length+'</td>'+
-        '<td class="mono">'+poidsStr+'</td>'+
-        '<td>'+escapeHtml(caseLabel(b.celluleId,b.ligneId))+'</td></tr>';
-    }).join('');
-    return '<div class="table-scroll"><table class="data"><thead><tr><th>Produit</th><th>Lot</th><th>Parcelle</th><th>Calibre</th><th>Traitement</th><th>Palox</th><th>Poids</th><th>Emplacement</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+totalHtml;
+    const sorted = batches.slice().sort((a,b)=>(a.produit||'').localeCompare(b.produit||'','fr'));
+    let rows = '';
+    let i = 0;
+    while(i < sorted.length){
+      const produit = sorted[i].produit;
+      let groupPalox = 0, groupKnown = 0, groupUnknown = 0;
+      while(i < sorted.length && sorted[i].produit === produit){
+        const b = sorted[i];
+        const summary = batchPoidsSummary(b);
+        const poidsStr = summary.total>0 ? (fmt(summary.total)+' kg'+(summary.unknown>0?' (partiel)':'')) : '—';
+        rows += '<tr><td>'+escapeHtml(b.produit)+'</td><td class="mono">'+escapeHtml(b.lot||'—')+(b.lot2? ' + '+escapeHtml(b.lot2):'')+'</td>'+
+          '<td>'+escapeHtml(b.parcelle||'—')+'</td><td>'+escapeHtml(b.calibre||'—')+'</td><td>'+(b.traitement?'Antigerme':'—')+'</td>'+
+          '<td class="mono">'+b.paloxs.length+'</td>'+
+          '<td class="mono">'+poidsStr+'</td>'+
+          '<td>'+escapeHtml(caseLabel(b.celluleId,b.ligneId))+'</td>'+
+          '<td>'+escapeHtml(b.commentaire||'—')+'</td></tr>';
+        groupPalox += b.paloxs.length;
+        groupKnown += summary.total;
+        groupUnknown += summary.unknown;
+        i++;
+      }
+      rows += '<tr class="totals-row"><td colspan="5">Sous-total — '+escapeHtml(produit)+'</td>'+
+        '<td class="mono">'+groupPalox+'</td>'+
+        '<td class="mono">'+fmt(groupKnown)+' kg'+(groupUnknown>0?' ('+groupUnknown+' sans poids)':'')+'</td>'+
+        '<td colspan="2"></td></tr>';
+    }
+    return '<div class="table-scroll"><table class="data"><thead><tr><th>Produit</th><th>Lot</th><th>Parcelle</th><th>Calibre</th><th>Traitement</th><th>Palox</th><th>Poids</th><th>Emplacement</th><th>Commentaire</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+totalHtml;
   }
 
   // ---------- STOCK GLOBAL ----------
