@@ -1109,7 +1109,14 @@
     if(filters.produit) batches = batches.filter(b=>b.produit===filters.produit);
     if(filters.calibre) batches = batches.filter(b=>b.calibre===filters.calibre);
     if(lotText) batches = batches.filter(b=>(b.lot||'').toLowerCase().includes(lotText) || (b.lot2||'').toLowerCase().includes(lotText));
-    if(q) batches = batches.filter(b => [b.produit,b.lot,b.lot2,b.parcelle,b.calibre,(b.traitement?'antigerme':''),b.commentaire,caseLabel(b.celluleId,b.ligneId)].some(f => (f||'').toLowerCase().includes(q)));
+    if(q){
+      const tokens = q.split(/\s+/).filter(Boolean);
+      batches = batches.filter(b=>{
+        const haystack = [b.produit,b.lot,b.lot2,b.parcelle,b.calibre,(b.traitement?'antigerme':''),b.commentaire,caseLabel(b.celluleId,b.ligneId)]
+          .map(f=>(f||'').toLowerCase()).join(' ');
+        return tokens.every(t => haystack.includes(t));
+      });
+    }
     return batches;
   }
   function csvEscape(v){
