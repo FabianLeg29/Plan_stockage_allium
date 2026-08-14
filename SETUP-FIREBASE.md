@@ -41,4 +41,4 @@ Dans **Authentication > Settings > Authorized domains**, ajoute le domaine où `
 
 ## 5. Tester
 
-Ouvre `index.html` dans un navigateur, connecte-toi avec un compte `editor` : tu dois voir l'onglet "Cellules" et pouvoir ajouter/sortir/déplacer des palox, mais pas l'onglet "Comptes". Avec un compte `admin`, tu dois en plus voir l'onglet "Comptes" et pouvoir changer le rôle des autres comptes. Avec un compte `viewer`, les actions de gestion doivent être masquées et les onglets "Cellules"/"Comptes" absents.
+Ouvre `index.html` dans un navigateur, connecte-toi avec un compte `editor` : tu dois pouvoir ajouter/sortir/déplacer des palox, mais pas voir les onglets "Cellules" et "Comptes" (réservés à l'admin). Avec un compte `admin`, tu dois en plus voir ces deux onglets, pouvoir configurer les cellules/lignes et changer le rôle des autres comptes. Avec un compte `viewer`, les actions de gestion doivent être masquées et les onglets "Cellules"/"Comptes" absents.

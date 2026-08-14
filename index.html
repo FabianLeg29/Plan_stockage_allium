@@ -544,12 +544,12 @@
     document.getElementById('refreshBtn').addEventListener('click', manualRefresh);
     document.getElementById('logoutBtn').addEventListener('click', ()=>auth.signOut());
     const tabCellules = document.getElementById('tabCellules');
-    if(tabCellules) tabCellules.style.display = canManageStock() ? '' : 'none';
+    if(tabCellules) tabCellules.style.display = isAdmin() ? '' : 'none';
     const tabComptes = document.getElementById('tabComptes');
     if(tabComptes) tabComptes.style.display = isAdmin() ? '' : 'none';
   }
   function renderTab(tab){
-    if(tab==='cellules' && !canManageStock()) tab = 'stockage';
+    if(tab==='cellules' && !isAdmin()) tab = 'stockage';
     if(tab==='comptes' && !isAdmin()) tab = 'stockage';
     currentTab = tab;
     document.querySelectorAll('nav.tabs button').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
@@ -565,7 +565,7 @@
 
   function viewStockage(){
     if(state.cellules.length===0){
-      return '<div class="card">'+emptyState("Aucune cellule configurée", canManageStock() ? "Crée une cellule dans l'onglet « Cellules » pour commencer." : "Aucune donnée pour le moment — contacte un compte de gestion.")+'</div>';
+      return '<div class="card">'+emptyState("Aucune cellule configurée", isAdmin() ? "Crée une cellule dans l'onglet « Cellules » pour commencer." : "Aucune donnée pour le moment — contacte un compte admin.")+'</div>';
     }
     if(!currentCelluleId || !getCellule(currentCelluleId)) currentCelluleId = state.cellules[0].id;
     const c = getCellule(currentCelluleId);
