@@ -412,6 +412,7 @@
       state.calibres = ['20/40','40/60','60/80'];
     }
     state.cellules.forEach(c=>{
+      if(c.frigo==null) c.frigo = false;
       c.lignes.forEach(l=>{
         if(l.capacite==null){
           if(Array.isArray(l.hauteurParPosition)) l.capacite = l.hauteurParPosition.reduce((a,b)=>a+b,0) || 50;
@@ -1201,9 +1202,11 @@
   function globalStockGroups(byCellule){
     const map = {}, order = [];
     state.lots.forEach(l=>{
-      const key = (byCellule ? l.celluleId+'|' : '') + l.produit + '|' + (l.calibre||'');
+      const cell = getCellule(l.celluleId);
+      const isFrigo = !!(cell && cell.frigo);
+      const key = (byCellule ? l.celluleId+'|' : (isFrigo?'frigo|':'cellules|')) + l.produit + '|' + (l.calibre||'');
       if(!map[key]){
-        map[key] = { celluleId: byCellule ? l.celluleId : null, produit: l.produit, calibre: l.calibre||'', count:0, poidsConnu:0, inconnu:0 };
+        map[key] = { celluleId: byCellule ? l.celluleId : null, frigo: isFrigo, produit: l.produit, calibre: l.calibre||'', count:0, poidsConnu:0, inconnu:0 };
         order.push(key);
       }
       map[key].count++;
@@ -1214,23 +1217,17 @@
       if(byCellule){
         const nomA = getCellule(a.celluleId).nom, nomB = getCellule(b.celluleId).nom;
         if(nomA!==nomB) return nomA.localeCompare(nomB,'fr');
+      } else if(a.frigo!==b.frigo){
+        return a.frigo ? 1 : -1;
       }
       if(a.produit!==b.produit) return a.produit.localeCompare(b.produit,'fr');
       return (a.calibre||'').localeCompare(b.calibre||'','fr');
     });
   }
-  function viewGlobal(){
-    const groups = globalStockGroups(globalByCellule);
-    const switchHtml = '<div class="view-switch">'+
-      '<button type="button" data-global-mode="all" class="'+(!globalByCellule?'active':'')+'">Toutes les cellules</button>'+
-      '<button type="button" data-global-mode="cellule" class="'+(globalByCellule?'active':'')+'">Par cellule</button>'+
-    '</div>';
-    if(groups.length===0){
-      return '<div class="card"><h2>Stock global</h2><p class="sub">Vue d\'ensemble du stock, tous produits et calibres confondus.</p>'+switchHtml+emptyState("Aucun palox enregistré", "Le stock global se remplit dès la première entrée.")+'</div>';
-    }
+  function globalStockTableHtml(groups, byCellule){
     const rows = groups.map(g=>{
       const poidsStr = g.poidsConnu>0 ? (fmt(g.poidsConnu)+' kg'+(g.inconnu>0?' (partiel)':'')) : '—';
-      const celluleCell = globalByCellule ? '<td>'+escapeHtml(getCellule(g.celluleId).nom)+'</td>' : '';
+      const celluleCell = byCellule ? '<td>'+escapeHtml(getCellule(g.celluleId).nom)+'</td>' : '';
       return '<tr>'+celluleCell+
         '<td><span class="produit-dot" style="background:'+colorForProduit(g.produit)+'"></span>'+escapeHtml(g.produit)+'</td>'+
         '<td>'+escapeHtml(g.calibre||'—')+'</td>'+
@@ -1241,12 +1238,36 @@
     const totalCount = groups.reduce((s,g)=>s+g.count,0);
     const totalPoids = groups.reduce((s,g)=>s+g.poidsConnu,0);
     const totalInconnu = groups.reduce((s,g)=>s+g.inconnu,0);
-    const celluleHead = globalByCellule ? '<th>Cellule</th>' : '';
-    const celluleTotalCell = globalByCellule ? '<td></td>' : '';
+    const celluleHead = byCellule ? '<th>Cellule</th>' : '';
+    const celluleTotalCell = byCellule ? '<td></td>' : '';
     const totalsRow = '<tr class="totals-row">'+celluleTotalCell+'<td>Total</td><td></td><td class="mono">'+totalCount+'</td>'+
       '<td class="mono">'+fmt(totalPoids)+' kg'+(totalInconnu>0?' ('+totalInconnu+' sans poids)':'')+'</td></tr>';
+    return '<div class="table-scroll"><table class="data"><thead><tr>'+celluleHead+'<th>Produit</th><th>Calibre</th><th>Palox</th><th>Poids</th></tr></thead><tbody>'+rows+totalsRow+'</tbody></table></div>';
+  }
+  function viewGlobal(){
+    const groups = globalStockGroups(globalByCellule);
+    const switchHtml = '<div class="view-switch">'+
+      '<button type="button" data-global-mode="all" class="'+(!globalByCellule?'active':'')+'">Toutes les cellules</button>'+
+      '<button type="button" data-global-mode="cellule" class="'+(globalByCellule?'active':'')+'">Par cellule</button>'+
+    '</div>';
+    if(groups.length===0){
+      return '<div class="card"><h2>Stock global</h2><p class="sub">Vue d\'ensemble du stock, tous produits et calibres confondus.</p>'+switchHtml+emptyState("Aucun palox enregistré", "Le stock global se remplit dès la première entrée.")+'</div>';
+    }
+    let tablesHtml;
+    if(globalByCellule){
+      tablesHtml = globalStockTableHtml(groups, true);
+    } else {
+      const frigoGroups = groups.filter(g=>g.frigo);
+      const celluleGroups = groups.filter(g=>!g.frigo);
+      if(frigoGroups.length===0){
+        tablesHtml = globalStockTableHtml(groups, false);
+      } else {
+        tablesHtml = '<h3 style="margin:0 0 8px;">Cellules</h3>'+globalStockTableHtml(celluleGroups, false)+
+          '<h3 style="margin:20px 0 8px;">Frigos</h3>'+globalStockTableHtml(frigoGroups, false);
+      }
+    }
     return '<div class="card"><h2>Stock global</h2><p class="sub">Vue d\'ensemble du stock par produit et calibre.</p>'+switchHtml+
-      '<div class="table-scroll"><table class="data"><thead><tr>'+celluleHead+'<th>Produit</th><th>Calibre</th><th>Palox</th><th>Poids</th></tr></thead><tbody>'+rows+totalsRow+'</tbody></table></div>'+
+      tablesHtml+
     '</div>';
   }
 
@@ -1293,6 +1314,7 @@
       }).join('');
       return '<div class="config-cellule" data-cellule-block="'+c.id+'">'+
         '<div class="cfg-head"><input type="text" value="'+escapeHtml(c.nom)+'" data-cellule-nom="'+c.id+'">'+
+        '<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--ink-soft);"><input type="checkbox" data-cellule-frigo="'+c.id+'" '+(c.frigo?'checked':'')+' style="width:auto;"> Frigo</label>'+
         '<button class="del-btn" data-del-cellule="'+c.id+'">supprimer</button></div>'+
         lignesHtml+
         '<button class="btn btn-ghost btn-sm" style="margin-top:8px;" data-add-ligne="'+c.id+'">+ Ajouter une ligne</button>'+
@@ -1443,6 +1465,12 @@
       document.querySelectorAll('[data-cellule-nom]').forEach(inp=>{
         inp.addEventListener('change', async ()=>{
           getCellule(inp.dataset.celluleNom).nom = inp.value.trim() || 'Sans nom';
+          await saveState(); renderTab('cellules');
+        });
+      });
+      document.querySelectorAll('[data-cellule-frigo]').forEach(cb=>{
+        cb.addEventListener('change', async ()=>{
+          getCellule(cb.dataset.celluleFrigo).frigo = cb.checked;
           await saveState(); renderTab('cellules');
         });
       });
