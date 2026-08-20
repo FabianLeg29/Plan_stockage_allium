@@ -1135,7 +1135,7 @@
     return /[;"\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
   }
   function exportStockCsv(){
-    const batches = filteredBatches(currentSearchFilters());
+    const batches = filteredBatches(currentSearchFilters()).filter(b => !(getCellule(b.celluleId)||{}).nonAchetee);
     const header = ['Produit','Lot','Poids total (kg)','Palox','Emplacement','Calibre','Traitement'];
     const lines = [header.join(';')];
     batches.forEach(b=>{
