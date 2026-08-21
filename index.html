@@ -656,22 +656,38 @@
       ) : '')+
     '</div>';
   }
-  function openLigneDetail(celluleId, ligneId, filterProduit){
+  function ligneDetailBatchesHtml(celluleId, ligneId, filterProduit, searchQuery){
     let batches = batchesInLigne(celluleId, ligneId);
     if(filterProduit){
       const norm = normalizeProduitKey(filterProduit);
       batches = batches.filter(b => normalizeProduitKey(b.produit)===norm);
     }
+    const q = (searchQuery||'').toLowerCase().trim();
+    if(q){
+      batches = batches.filter(b =>
+        (b.lot||'').toLowerCase().includes(q) ||
+        (b.lot2||'').toLowerCase().includes(q) ||
+        (b.calibre||'').toLowerCase().includes(q) ||
+        b.paloxs.some(p => (p.poids!=null && String(p.poids).includes(q)) || (p.poidsLot2!=null && String(p.poidsLot2).includes(q)))
+      );
+    }
+    if(batches.length===0){
+      return '<p style="color:var(--ink-soft);font-size:13.5px;">'+
+        (q ? 'Aucun résultat pour « '+escapeHtml(searchQuery)+' ».' : filterProduit? 'Aucun palox de « '+escapeHtml(filterProduit)+' » ici pour le moment.' : 'Aucun palox ici pour le moment.')+
+      '</p>';
+    }
+    return batches.map(batchCardHtml).join('');
+  }
+  function openLigneDetail(celluleId, ligneId, filterProduit){
     const label = caseLabel(celluleId, ligneId);
     const l = getLigne(celluleId, ligneId);
     const occ = ligneOccupied(celluleId, ligneId);
 
-    let lotsHtml = batches.length===0
-      ? '<p style="color:var(--ink-soft);font-size:13.5px;">'+(filterProduit? 'Aucun palox de « '+escapeHtml(filterProduit)+' » ici pour le moment.' : 'Aucun palox ici pour le moment.')+'</p>'
-      : batches.map(batchCardHtml).join('');
-
     const filterBarHtml = filterProduit ?
       '<div class="filter-bar">Filtré sur <b>'+escapeHtml(filterProduit)+'</b><button type="button" class="btn btn-ghost btn-sm" id="clearFilter">✕ Voir toute la ligne</button></div>' : '';
+
+    const searchBarHtml = '<div class="search-box" style="margin-bottom:12px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'+
+      '<input type="text" id="ligneDetailSearch" placeholder="Chercher un lot, un calibre, un poids de palox…"></div>';
 
     const addSectionHtml = canManageStock() ?
         '<p style="font-size:12px;color:var(--ink-soft);">'+(l.capacite-occ)+' palox restants dans cette ligne. Pour ajouter du stock, utilise le bouton « + Entrée » dans l\'onglet Stockage.</p>'
@@ -682,7 +698,8 @@
       '<div class="detail-header"><button class="detail-close" id="closeDetail">×</button><h3>'+escapeHtml(label)+'</h3><p>'+occ+' / '+l.capacite+' palox · '+Math.round(lignePercent(celluleId,ligneId))+'% plein</p></div>'+
       '<div class="detail-body">'+
         filterBarHtml+
-        lotsHtml+
+        searchBarHtml+
+        '<div id="ligneDetailResults">'+ligneDetailBatchesHtml(celluleId, ligneId, filterProduit, '')+'</div>'+
         addSectionHtml+
       '</div>';
     panel.classList.add('open');
@@ -694,6 +711,12 @@
 
     const clearBtn = document.getElementById('clearFilter');
     if(clearBtn) clearBtn.addEventListener('click', ()=> openLigneDetail(celluleId, ligneId));
+
+    document.getElementById('ligneDetailSearch').addEventListener('input', (ev)=>{
+      const results = document.getElementById('ligneDetailResults');
+      results.innerHTML = ligneDetailBatchesHtml(celluleId, ligneId, filterProduit, ev.target.value);
+      bindBatchCardEvents(results);
+    });
   }
   function closeDetail(){
     document.getElementById('detailPanel').classList.remove('open');
@@ -800,8 +823,11 @@
   function bindDetailEvents(){
     document.getElementById('closeDetail').addEventListener('click', closeDetail);
     document.getElementById('overlayBg').addEventListener('click', closeDetail);
+    bindBatchCardEvents(document);
+  }
 
-    document.querySelectorAll('[data-act]').forEach(btn=>{
+  function bindBatchCardEvents(root){
+    root.querySelectorAll('[data-act]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         const batchId = btn.dataset.batch, act = btn.dataset.act;
         const card = btn.closest('.lot-card');
@@ -830,7 +856,7 @@
       });
     });
 
-    document.querySelectorAll('[data-select-all]').forEach(cb=>{
+    root.querySelectorAll('[data-select-all]').forEach(cb=>{
       cb.addEventListener('change', ()=>{
         const card = cb.closest('.lot-card');
         card.querySelectorAll('input[data-palox]').forEach(paloxCb=>{ paloxCb.checked = cb.checked; });
