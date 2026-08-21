@@ -616,12 +616,14 @@
   }
 
   // ---------- DETAIL PANEL (une ligne, détail par lot) ----------
-  function batchCardHtml(batch){
-    const summary = batchPoidsSummary(batch);
+  function batchCardHtml(batch, visibleIds){
+    const visiblePaloxs = visibleIds ? batch.paloxs.filter(p=>visibleIds.has(p.id)) : batch.paloxs;
+    const summary = batchPoidsSummary({ paloxs: visiblePaloxs });
     const poidsStr = summary.unknown>0 ?
       (fmt(summary.total)+' kg connus ('+summary.unknown+' palox sans poids renseigné)') :
       (fmt(summary.total)+' kg');
     const rows = batch.paloxs.map((p,idx)=>{
+      if(visibleIds && !visibleIds.has(p.id)) return '';
       let poidsLabel;
       if(p.poidsLot2!=null){
         const tot = paloxTotalPoids(p);
@@ -640,9 +642,10 @@
         '<br>entré le '+fmtDate(batch.dateEntree)+
         (batch.commentaire? '<br>« '+escapeHtml(batch.commentaire)+' »':'')+
       '</div>'+
+      (visibleIds ? '<div class="filter-bar" style="margin-bottom:8px;">'+visiblePaloxs.length+' palox isolé(s) par la recherche</div>' : '')+
       (canManageStock() ? '<label class="palox-item palox-select-all"><input type="checkbox" data-select-all="'+batch.batchId+'"> Tout sélectionner</label>' : '')+
       '<div class="palox-list">'+rows+'</div>'+
-      '<div class="batch-summary">'+batch.paloxs.length+' palox · '+poidsStr+'</div>'+
+      '<div class="batch-summary">'+visiblePaloxs.length+' palox · '+poidsStr+'</div>'+
       (canManageStock() ? (
         '<div class="lot-actions">'+
           '<button class="btn btn-sm btn-warn" data-act="sortie" data-batch="'+batch.batchId+'">Sortir la sélection</button>'+
@@ -662,21 +665,29 @@
       const norm = normalizeProduitKey(filterProduit);
       batches = batches.filter(b => normalizeProduitKey(b.produit)===norm);
     }
-    const q = (searchQuery||'').toLowerCase().trim();
-    if(q){
-      batches = batches.filter(b =>
-        (b.lot||'').toLowerCase().includes(q) ||
-        (b.lot2||'').toLowerCase().includes(q) ||
-        (b.calibre||'').toLowerCase().includes(q) ||
-        b.paloxs.some(p => (p.poids!=null && String(p.poids).includes(q)) || (p.poidsLot2!=null && String(p.poidsLot2).includes(q)))
-      );
+    const allTokens = (searchQuery||'').toLowerCase().trim().split(/\s+/).filter(t => t && t!=='kg');
+    const weightTokens = allTokens.filter(t => /^\d+([.,]\d+)?$/.test(t));
+    const textTokens = allTokens.filter(t => !/^\d+([.,]\d+)?$/.test(t));
+    const paloxMatchesWeights = (p) => weightTokens.every(t =>
+      (p.poids!=null && String(p.poids).includes(t)) || (p.poidsLot2!=null && String(p.poidsLot2).includes(t))
+    );
+    if(allTokens.length){
+      batches = batches.filter(b=>{
+        const haystack = [b.produit,b.lot,b.lot2,b.parcelle,b.calibre,(b.traitement?'antigerme':''),b.commentaire].map(f=>(f||'').toLowerCase()).join(' ');
+        const textOk = textTokens.every(t => haystack.includes(t));
+        const weightOk = weightTokens.length===0 || b.paloxs.some(paloxMatchesWeights);
+        return textOk && weightOk;
+      });
     }
     if(batches.length===0){
       return '<p style="color:var(--ink-soft);font-size:13.5px;">'+
-        (q ? 'Aucun résultat pour « '+escapeHtml(searchQuery)+' ».' : filterProduit? 'Aucun palox de « '+escapeHtml(filterProduit)+' » ici pour le moment.' : 'Aucun palox ici pour le moment.')+
+        (allTokens.length ? 'Aucun résultat pour « '+escapeHtml(searchQuery)+' ».' : filterProduit? 'Aucun palox de « '+escapeHtml(filterProduit)+' » ici pour le moment.' : 'Aucun palox ici pour le moment.')+
       '</p>';
     }
-    return batches.map(batchCardHtml).join('');
+    return batches.map(b=>{
+      const visibleIds = weightTokens.length ? new Set(b.paloxs.filter(paloxMatchesWeights).map(p=>p.id)) : null;
+      return batchCardHtml(b, visibleIds);
+    }).join('');
   }
   function openLigneDetail(celluleId, ligneId, filterProduit){
     const label = caseLabel(celluleId, ligneId);
