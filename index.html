@@ -1263,16 +1263,29 @@
     });
   }
   function globalStockTableHtml(groups, byCellule){
-    const rows = groups.map(g=>{
-      const poidsStr = g.poidsConnu>0 ? (fmt(g.poidsConnu)+' kg'+(g.inconnu>0?' (partiel)':'')) : '—';
-      const celluleCell = byCellule ? '<td>'+escapeHtml(getCellule(g.celluleId).nom)+'</td>' : '';
-      return '<tr>'+celluleCell+
-        '<td><span class="produit-dot" style="background:'+colorForProduit(g.produit)+'"></span>'+escapeHtml(g.produit)+'</td>'+
-        '<td>'+escapeHtml(g.calibre||'—')+'</td>'+
-        '<td class="mono">'+g.count+'</td>'+
-        '<td class="mono">'+poidsStr+'</td>'+
-      '</tr>';
-    }).join('');
+    let rows = '';
+    let i = 0;
+    while(i < groups.length){
+      const g0 = groups[i];
+      let groupPalox = 0, groupPoids = 0, groupInconnu = 0;
+      while(i < groups.length && groups[i].produit===g0.produit && (!byCellule || groups[i].celluleId===g0.celluleId)){
+        const g = groups[i];
+        const poidsStr = g.poidsConnu>0 ? (fmt(g.poidsConnu)+' kg'+(g.inconnu>0?' (partiel)':'')) : '—';
+        const celluleCell = byCellule ? '<td>'+escapeHtml(getCellule(g.celluleId).nom)+'</td>' : '';
+        rows += '<tr>'+celluleCell+
+          '<td><span class="produit-dot" style="background:'+colorForProduit(g.produit)+'"></span>'+escapeHtml(g.produit)+'</td>'+
+          '<td>'+escapeHtml(g.calibre||'—')+'</td>'+
+          '<td class="mono">'+g.count+'</td>'+
+          '<td class="mono">'+poidsStr+'</td>'+
+        '</tr>';
+        groupPalox += g.count; groupPoids += g.poidsConnu; groupInconnu += g.inconnu;
+        i++;
+      }
+      const celluleSubtotalCell = byCellule ? '<td></td>' : '';
+      rows += '<tr class="totals-row">'+celluleSubtotalCell+'<td colspan="2">Sous-total — '+escapeHtml(g0.produit)+'</td>'+
+        '<td class="mono">'+groupPalox+'</td>'+
+        '<td class="mono">'+fmt(groupPoids)+' kg'+(groupInconnu>0?' ('+groupInconnu+' sans poids)':'')+'</td></tr>';
+    }
     const totalCount = groups.reduce((s,g)=>s+g.count,0);
     const totalPoids = groups.reduce((s,g)=>s+g.poidsConnu,0);
     const totalInconnu = groups.reduce((s,g)=>s+g.inconnu,0);
