@@ -33,6 +33,7 @@ state = {
       id, celluleId, ligneId, batchId,   // batchId regroupe les palox entrés ensemble (même produit/lot/calibre/traitement/emplacement)
       produit, lot, lot2,                // lot2 optionnel = palox mixte
       parcelle, calibre, traitement,     // traitement = booléen "antigerme"
+      poidsSorti,                        // booléen, classement produit pour la facturation (indépendant du poids réel)
       poids, poidsLot2,                  // poids par palox, obligatoire à l'entrée
       dateEntree, commentaire
     }
