@@ -431,7 +431,7 @@
         const batchId = l.batchId || l.id || uid();
         for(let i=0;i<count;i++){
           expanded.push({ id: i===0 ? (l.id||uid()) : uid(), celluleId: l.celluleId, ligneId: l.ligneId, batchId,
-            produit: l.produit, lot: l.lot, parcelle: l.parcelle, calibre: l.calibre, traitement: l.traitement,
+            produit: l.produit, lot: l.lot, parcelle: l.parcelle, calibre: l.calibre, traitement: l.traitement, poidsSorti: l.poidsSorti,
             poids: perUnit, dateEntree: l.dateEntree, commentaire: l.commentaire });
         }
       } else {
@@ -444,7 +444,7 @@
     // pour éviter que des modifications successives ne fragmentent artificiellement un même lot.
     const batchKeyMap = {};
     state.lots.forEach(l=>{
-      const key = [l.celluleId, l.ligneId, l.produit, l.lot||'', l.lot2||'', l.calibre||'', !!l.traitement].join('|');
+      const key = [l.celluleId, l.ligneId, l.produit, l.lot||'', l.lot2||'', l.calibre||'', !!l.traitement, !!l.poidsSorti].join('|');
       if(batchKeyMap[key]==null) batchKeyMap[key] = l.batchId;
       else l.batchId = batchKeyMap[key];
     });
@@ -507,7 +507,7 @@
       const key = l.batchId+'|'+l.celluleId+'|'+l.ligneId;
       if(!map[key]){
         map[key] = { batchId:l.batchId, celluleId:l.celluleId, ligneId:l.ligneId, produit:l.produit, lot:l.lot, lot2:l.lot2,
-          parcelle:l.parcelle, calibre:l.calibre, traitement:l.traitement, dateEntree:l.dateEntree, commentaire:l.commentaire, paloxs:[] };
+          parcelle:l.parcelle, calibre:l.calibre, traitement:l.traitement, poidsSorti:l.poidsSorti, dateEntree:l.dateEntree, commentaire:l.commentaire, paloxs:[] };
         order.push(key);
       }
       map[key].paloxs.push(l);
@@ -821,6 +821,7 @@
           '<label class="field">Parcelle<input type="text" data-f="parcelle" value="'+escapeHtml(first.parcelle||'')+'"></label>'+
           '<label class="field">Calibre<select data-f="calibre" required>'+calibreOptionsHtml(first.calibre||'')+'</select></label>'+
           '<label class="field checkbox-field"><input type="checkbox" data-f="traitement" '+(first.traitement?'checked':'')+'> Traitement antigerme</label>'+
+          '<label class="field checkbox-field"><input type="checkbox" data-f="poidsSorti" '+(first.poidsSorti?'checked':'')+'> Poids sorti</label>'+
           '<label class="field">Date<input type="date" data-f="dateEntree" value="'+escapeHtml(first.dateEntree||today())+'"></label>'+
           '<label class="field span-2">Commentaire<input type="text" data-f="commentaire" value="'+escapeHtml(first.commentaire||'')+'"></label>'+
         '</div>'+
@@ -937,19 +938,20 @@
         const calibre = get('calibre').trim();
         if(!calibre){ msg.textContent = '✗ Le calibre est obligatoire'; msg.className='msg err'; return; }
         const traitement = row.querySelector('[data-f="traitement"]').checked;
+        const poidsSorti = row.querySelector('[data-f="poidsSorti"]').checked;
         const dateEntree = get('dateEntree');
         const commentaire = get('commentaire').trim();
         const weightsEl = row.querySelector('.palox-weights');
         const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
         const idSet = new Set(ids);
         const existingMatch = state.lots.find(l => !idSet.has(l.id) && l.celluleId===first.celluleId && l.ligneId===first.ligneId &&
-          l.produit===produit && (l.lot||'')===lotVal && (l.lot2||'')===lot2Val && (l.calibre||'')===calibre && !!l.traitement===traitement);
+          l.produit===produit && (l.lot||'')===lotVal && (l.lot2||'')===lot2Val && (l.calibre||'')===calibre && !!l.traitement===traitement && !!l.poidsSorti===poidsSorti);
         const newBatchId = existingMatch ? existingMatch.batchId : uid();
         state.lots = state.lots.filter(l=>!idSet.has(l.id));
         paloxs.forEach((p,idx)=>{
           const { poids: poidsUnit, poidsLot2: poidsLot2Unit } = resolvePaloxWeight(paloxStates[idx]);
           state.lots.push({ id: p.id, celluleId: p.celluleId, ligneId: p.ligneId, batchId: newBatchId,
-            produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree, commentaire });
+            produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poidsSorti, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree, commentaire });
         });
         addTx('modification', { quantite: paloxs.length, produit, lot: lotVal, lot2: lot2Val, date: today(), commentaire, label: caseLabel(first.celluleId, first.ligneId) });
       }
@@ -998,6 +1000,7 @@
         '<label class="field">Parcelle<input type="text" data-f="parcelle" placeholder="optionnel"></label>'+
         '<label class="field">Calibre<select data-f="calibre" required>'+calibreOptionsHtml('')+'</select></label>'+
         '<label class="field checkbox-field"><input type="checkbox" data-f="traitement"> Traitement antigerme</label>'+
+        '<label class="field checkbox-field"><input type="checkbox" data-f="poidsSorti"> Poids sorti</label>'+
         '<label class="field">Nb de palox<input type="number" min="1" step="1" data-f="nbPalox" value="1" required></label>'+
         '<label class="field span-2">Commentaire<input type="text" data-f="commentaire"></label>'+
       '</div>'+
@@ -1080,6 +1083,7 @@
         const calibre = row.querySelector('[data-f="calibre"]').value.trim();
         if(!calibre){ errors.push('Ligne #'+(idx+1)+' : calibre manquant'); return; }
         const traitement = row.querySelector('[data-f="traitement"]').checked;
+        const poidsSorti = row.querySelector('[data-f="poidsSorti"]').checked;
         const weightsEl = row.querySelector('.palox-weights');
         const paloxStates = weightsEl ? readPaloxWeightsState(weightsEl) : [];
         const commentaire = row.querySelector('[data-f="commentaire"]').value.trim();
@@ -1091,7 +1095,7 @@
         const poidsKnown = [];
         resolved.forEach(({poids: poidsUnit, poidsLot2: poidsLot2Unit})=>{
           poidsKnown.push((poidsUnit||0) + (poidsLot2Unit||0));
-          state.lots.push({ id: uid(), celluleId, ligneId, batchId, produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree: dateVal, commentaire });
+          state.lots.push({ id: uid(), celluleId, ligneId, batchId, produit, lot: lotVal, lot2: lot2Val, parcelle, calibre, traitement, poidsSorti, poids: poidsUnit, poidsLot2: poidsLot2Unit, dateEntree: dateVal, commentaire });
         });
         const poidsTotal = poidsKnown.reduce((a,b)=>a+b,0);
         addTx('entree', { quantite: count, poids: poidsTotal, produit, lot: lotVal, lot2: lot2Val, date: dateVal, commentaire, label: caseLabel(celluleId,ligneId) });
@@ -1173,7 +1177,7 @@
   }
   function exportStockCsv(){
     const batches = filteredBatches(currentSearchFilters()).filter(b => !(getCellule(b.celluleId)||{}).nonAchetee);
-    const header = ['Produit','Lot','Poids total (kg)','Palox','Emplacement','Calibre','Traitement'];
+    const header = ['Produit','Lot','Poids total (kg)','Palox','Emplacement','Calibre','Traitement','Poids sorti'];
     const lines = [header.join(';')];
     batches.forEach(b=>{
       const summary = batchPoidsSummary(b);
@@ -1184,7 +1188,8 @@
         b.paloxs.length,
         caseLabel(b.celluleId,b.ligneId),
         b.calibre||'',
-        b.traitement ? 'Oui' : 'Non'
+        b.traitement ? 'Oui' : 'Non',
+        b.poidsSorti ? 'Oui' : 'Non'
       ];
       lines.push(row.map(csvEscape).join(';'));
     });
@@ -1219,6 +1224,7 @@
         const poidsStr = summary.total>0 ? (fmt(summary.total)+' kg'+(summary.unknown>0?' (partiel)':'')) : '—';
         rows += '<tr><td>'+escapeHtml(b.produit)+'</td><td class="mono">'+escapeHtml(b.lot||'—')+(b.lot2? ' + '+escapeHtml(b.lot2):'')+'</td>'+
           '<td>'+escapeHtml(b.parcelle||'—')+'</td><td>'+escapeHtml(b.calibre||'—')+'</td><td>'+(b.traitement?'Antigerme':'—')+'</td>'+
+          '<td>'+(b.poidsSorti?'Oui':'—')+'</td>'+
           '<td class="mono">'+b.paloxs.length+'</td>'+
           '<td class="mono">'+poidsStr+'</td>'+
           '<td>'+escapeHtml(caseLabel(b.celluleId,b.ligneId))+'</td>'+
@@ -1228,12 +1234,12 @@
         groupUnknown += summary.unknown;
         i++;
       }
-      rows += '<tr class="totals-row"><td colspan="5">Sous-total — '+escapeHtml(produit)+'</td>'+
+      rows += '<tr class="totals-row"><td colspan="6">Sous-total — '+escapeHtml(produit)+'</td>'+
         '<td class="mono">'+groupPalox+'</td>'+
         '<td class="mono">'+fmt(groupKnown)+' kg'+(groupUnknown>0?' ('+groupUnknown+' sans poids)':'')+'</td>'+
         '<td colspan="2"></td></tr>';
     }
-    return '<div class="table-scroll"><table class="data"><thead><tr><th>Produit</th><th>Lot</th><th>Parcelle</th><th>Calibre</th><th>Traitement</th><th>Palox</th><th>Poids</th><th>Emplacement</th><th>Commentaire</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+totalHtml;
+    return '<div class="table-scroll"><table class="data"><thead><tr><th>Produit</th><th>Lot</th><th>Parcelle</th><th>Calibre</th><th>Traitement</th><th>Poids sorti</th><th>Palox</th><th>Poids</th><th>Emplacement</th><th>Commentaire</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+totalHtml;
   }
 
   // ---------- STOCK GLOBAL ----------
