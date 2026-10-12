@@ -1372,7 +1372,7 @@
       }).join('');
       return '<div class="config-cellule" data-cellule-block="'+c.id+'">'+
         '<div class="cfg-head"><input type="text" value="'+escapeHtml(c.nom)+'" data-cellule-nom="'+c.id+'">'+
-        '<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--ink-soft);"><input type="checkbox" data-cellule-non-achetee="'+c.id+'" '+(c.nonAchetee?'checked':'')+' style="width:auto;"> Marchandise extérieure non achetée</label>'+
+        '<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" data-cellule-non-achetee="'+c.id+'" '+(c.nonAchetee?'checked':'')+' style="width:auto;"> Marchandise extérieure non achetée</label>'+
         '<button class="del-btn" data-del-cellule="'+c.id+'">supprimer</button></div>'+
         lignesHtml+
         '<button class="btn btn-ghost btn-sm" style="margin-top:8px;" data-add-ligne="'+c.id+'">+ Ajouter une ligne</button>'+
