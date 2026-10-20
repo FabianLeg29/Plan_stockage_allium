@@ -1371,7 +1371,33 @@
   // ---------- HISTORIQUE ----------
   function viewHistorique(){
     return '<div class="card"><h2>Historique des mouvements</h2><p class="sub">Toutes les entrées, sorties et déplacements enregistrés.</p>'+
+      '<div class="grid-form" style="margin-bottom:14px;max-width:420px;">'+
+        '<label class="field">Du<input type="date" id="historiqueFrom"></label>'+
+        '<label class="field">Au<input type="date" id="historiqueTo"></label>'+
+      '</div>'+
       '<div id="txTableWrap">'+txTable(state.transactions)+'</div></div>';
+  }
+  function filteredTransactions(){
+    const from = (document.getElementById('historiqueFrom')||{}).value || '';
+    const to = (document.getElementById('historiqueTo')||{}).value || '';
+    let txs = state.transactions;
+    if(from) txs = txs.filter(t=>t.date>=from);
+    if(to) txs = txs.filter(t=>t.date<=to);
+    return txs;
+  }
+  function refreshHistorique(){
+    document.getElementById('txTableWrap').innerHTML = txTable(filteredTransactions());
+    bindHistoriqueDeleteEvents();
+  }
+  function bindHistoriqueDeleteEvents(){
+    document.querySelectorAll('[data-del-tx]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!confirm('Supprimer cette ligne d\'historique ? Cette action ne peut pas être annulée. Le stock associé n\'est pas modifié.')) return;
+        state.transactions = state.transactions.filter(t=>t.id!==btn.dataset.delTx);
+        await saveState();
+        refreshHistorique();
+      });
+    });
   }
   function txTable(txs){
     if(txs.length===0) return emptyState("Aucun mouvement enregistré", "L'historique se remplit à chaque entrée, sortie ou déplacement.");
@@ -1545,14 +1571,11 @@
       document.getElementById('exportStockBtn').addEventListener('click', exportStockCsv);
     }
     if(tab==='historique'){
-      document.querySelectorAll('[data-del-tx]').forEach(btn=>{
-        btn.addEventListener('click', async ()=>{
-          if(!confirm('Supprimer cette ligne d\'historique ? Cette action ne peut pas être annulée. Le stock associé n\'est pas modifié.')) return;
-          state.transactions = state.transactions.filter(t=>t.id!==btn.dataset.delTx);
-          await saveState();
-          renderTab('historique');
-        });
-      });
+      bindHistoriqueDeleteEvents();
+      const fromInp = document.getElementById('historiqueFrom');
+      const toInp = document.getElementById('historiqueTo');
+      if(fromInp) fromInp.addEventListener('change', refreshHistorique);
+      if(toInp) toInp.addEventListener('change', refreshHistorique);
     }
     if(tab==='global'){
       document.querySelectorAll('[data-global-mode]').forEach(btn=>{
