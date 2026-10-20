@@ -40,9 +40,13 @@ state = {
   ],
   transactions: [ { id, type: 'entree'|'sortie'|'deplacement'|'modification', date, produit, lot, quantite, poids, label/fromLabel+toLabel, commentaire, responsable } ],
   produits: [ "Echalote", "Echalion", ... ],   // liste fermée, gérée par l'admin (onglet Comptes)
-  calibres: [ "20/40", "40/60", ... ]          // idem, liste fermée gérée par l'admin
+  calibres: [ "20/40", "40/60", ... ],         // idem, liste fermée gérée par l'admin
+  produitFamilles: { "Echalote": "Echalote", "Oignon de Roscoff": "Oignon", ... },  // famille par produit (Echalote/Oignon/Ail)
+  calibreFamilles: { "20/40": ["Echalote"], "40/50": ["Echalote","Oignon"], ... }   // famille(s) par calibre — un calibre peut appartenir à plusieurs familles
 }
 ```
+
+`FAMILLES` (constante JS, non admin-éditable) = `['Echalote','Oignon','Ail']`. Chaque produit a une famille (assignée par l'admin dans Comptes, ou déduite automatiquement du nom à la migration). Chaque calibre est tagué avec une ou plusieurs familles (checkbox par famille dans l'admin Calibres) ; un calibre sans famille cochée reste proposé à tous les produits. Le `<select>` Calibre du formulaire d'entrée/modification se recalcule dynamiquement (`calibreOptionsHtml(selected, famille)`) quand le produit change, via `familleForProduit()`.
 
 Points importants :
 - **Un palox = une ligne dans `state.lots`.** Plusieurs palox entrés ensemble partagent un `batchId` pour l'affichage groupé ("carte de lot").
