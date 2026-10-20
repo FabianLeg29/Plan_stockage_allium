@@ -1274,7 +1274,7 @@
         groupUnknown += summary.unknown;
         i++;
       }
-      rows += '<tr class="totals-row"><td colspan="6">Sous-total — '+escapeHtml(produit)+'</td>'+
+      rows += '<tr class="totals-row"><td colspan="6" style="padding-left:24px;">Sous-total — '+escapeHtml(produit)+'</td>'+
         '<td class="mono">'+groupPalox+'</td>'+
         '<td class="mono">'+fmt(groupKnown)+' kg'+(groupUnknown>0?' ('+groupUnknown+' sans poids)':'')+'</td>'+
         '<td colspan="2"></td></tr>';
@@ -1328,7 +1328,7 @@
         i++;
       }
       const celluleSubtotalCell = byCellule ? '<td></td>' : '';
-      rows += '<tr class="totals-row">'+celluleSubtotalCell+'<td colspan="2">Sous-total — '+escapeHtml(g0.produit)+'</td>'+
+      rows += '<tr class="totals-row">'+celluleSubtotalCell+'<td colspan="2" style="padding-left:24px;">Sous-total — '+escapeHtml(g0.produit)+'</td>'+
         '<td class="mono">'+groupPalox+'</td>'+
         '<td class="mono">'+fmt(groupPoids)+' kg'+(groupInconnu>0?' ('+groupInconnu+' sans poids)':'')+'</td></tr>';
     }
