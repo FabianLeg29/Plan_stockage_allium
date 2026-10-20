@@ -68,7 +68,7 @@ textarea{min-height:80px;resize:vertical}
 .scale .mark{position:absolute;top:-6px;width:4px;height:26px;margin-left:-2px;border-radius:2px;background:var(--ink);display:none}
 .scale-l{display:flex;justify-content:space-between;color:var(--muted);font-size:.85rem}
 .status{margin-top:10px;font-weight:700;min-height:1.4em}
-.status.ok{color:var(--ok)} .status.ko{color:var(--ko)}
+.status.ok{color:var(--ok)} .status.ko{color:var(--ko)} .status.nm{color:var(--nm)}
 .yn{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .yn button{min-height:52px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-weight:600;cursor:pointer}
 .yn button[aria-pressed="true"][data-v="oui"]{border-color:var(--ok);background:var(--ok-bg);color:var(--ok)}
@@ -403,6 +403,9 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
   const MOTIFS_DEFAUT=["Dégivrage en cours","Chargement récent (produit en descente en température)","Porte ouverte (manutention)","Chambre en remise en route","Autre (préciser en remarque)"];
   function statutDe(d){ if(d.etat==="arret") return "arret"; if(d.statut==="conforme"||d.statut==="normal"||d.statut==="ecart") return d.statut; return d.conforme===false?"ecart":"conforme"; }
   function libelleStatut(st){ return ({conforme:"Conforme",normal:"Hors cible – normal",ecart:"Écart",arret:"Arrêt"})[st]; }
+  // Contrôle à cœur : relevé indicatif (température produit, pour ajuster la consigne de la chambre). Une mesure hors cible
+  // est acceptée sans motif à choisir ni action corrective : statut normal avec ce motif.
+  const MOTIF_COEUR="Relevé indicatif (contrôle à cœur)";
   function estAutre(m){ return /^autre/i.test(String(m||"").trim()); }
   // Contre-mesure à faire : écart du jour qui n'a pas été suivi d'un autre relevé (même chambre ; ou même cellule, produit et lot).
   // La mesure initiale (l'écart) est enregistrée d'abord, puis la contre-mesure est un nouveau relevé rattaché par contreMesureDe.
@@ -590,8 +593,6 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       h+='<div class="card"><label class="f" for="plot">N° de lot ou commande (facultatif)</label><input id="plot" type="text" value="'+esc(P.lot)+'"></div>';
       h+='<div class="card"><h2>Températures à cœur</h2><p class="hint">Cible pour ce produit : '+rangeTxt(fnum(pr.min),fnum(pr.max))+'.</p><div id="mes"></div><button type="button" class="link" id="addm">Ajouter une mesure</button><div class="status" id="p-st"></div></div>';
       const cmP=cmPour("produit",P.cellule,pr.nom,P.lot.trim()); if(cmP) h+=cmCarte(cmP);
-      h+=blocHorsCible("p",P.choix);
-      h+='<div class="card hidden" id="p-act"><label class="f" for="pa">Action corrective</label><p class="hint">Obligatoire en cas d\'écart : produit isolé, bloqué, refroidi, responsable prévenu…</p><textarea id="pa">'+esc(P.action)+'</textarea></div>';
       h+='<div class="card"><label class="f" for="pc">Remarques (facultatif)</label><textarea id="pc">'+esc(P.comment)+'</textarea></div>';
       h+='<button class="primary" type="button" id="psave">Enregistrer le contrôle</button><p class="err hidden" id="perr"></p>';
     }
@@ -612,9 +613,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       let anyKo=false, anyVal=false;
       P.mesures.forEach((m,i)=>{ const ok=paintTemp("pm"+i,min,max); if(ok===false) anyKo=true; if(ok!==null) anyVal=true; });
       const st=document.getElementById("p-st");
-      st.className="status"+(anyKo?" ko":anyVal?" ok":""); st.textContent=anyKo?"Au moins une mesure hors cible":anyVal?"Mesures conformes":"";
-      document.getElementById("p-hc").classList.toggle("hidden",!anyKo);
-      document.getElementById("p-act").classList.toggle("hidden",!(anyKo&&P.choix==="ecart"));
+      st.className="status"+(anyKo?" nm":anyVal?" ok":""); st.textContent=anyKo?"Au moins une mesure hors cible : relevé indicatif, enregistré sans action corrective":anyVal?"Mesures conformes":"";
     };
     const drawMes=()=>{
       const box=document.getElementById("mes");
@@ -625,10 +624,8 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     };
     drawMes();
     document.getElementById("addm").addEventListener("click",()=>{P.mesures.push(""); drawMes();});
-    lierHorsCible("p",P,update);
     const ptp=document.getElementById("cmplustard"); if(ptp) ptp.addEventListener("click",()=>{ P.produit=null; P.lot=""; P.mesures=[""]; P.choix=null; P.action=""; P.comment=""; renderProduit(); window.scrollTo(0,0); });
     document.getElementById("plot").addEventListener("input",e=>P.lot=e.target.value);
-    document.getElementById("pa").addEventListener("input",e=>P.action=e.target.value);
     document.getElementById("pc").addEventListener("input",e=>P.comment=e.target.value);
     document.getElementById("psave").addEventListener("click",()=>saveProduit(pr));
   }
@@ -640,30 +637,18 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     if(!operateur.trim()) return show("Indiquez le nom de l'opérateur.");
     if(!temps.length||temps.length!==P.mesures.length) return show("Saisissez chaque température à cœur, ou retirez les mesures vides.");
     const horsCible=!temps.every(t=>inRange(t,min,max)!==false);
-    if(horsCible&&!P.choix) return show("Mesure hors cible : choisissez le motif, ou « Écart ».");
-    const statut=!horsCible?"conforme":(P.choix==="ecart"?"ecart":"normal");
-    const motif=statut==="normal"?P.choix:"";
-    if(statut==="ecart"&&!P.action.trim()) return show("Décrivez l'action corrective.");
-    if(statut==="normal"&&estAutre(motif)&&!P.comment.trim()) return show("Motif « Autre » : précisez-le dans les remarques.");
-    const conforme=statut!=="ecart";
+    const statut=horsCible?"normal":"conforme", motif=horsCible?MOTIF_COEUR:"", conforme=true;
     const cm=cmPour("produit",P.cellule,pr.nom,P.lot.trim());
     const now=new Date();
     const doc={ type:"produit", lieu:P.cellule, etat:"", produit:pr.nom, lot:P.lot.trim(), temps, temp:Math.max(...temps), hr:null,
-      min:fin(min)?min:null, max:fin(max)?max:null, hrMin:null, hrMax:null, tempConforme:!horsCible, conforme, statut, motif, contreMesureDe:cm?cm._id:"", action:statut==="ecart"?P.action.trim():"", commentaire:P.comment.trim(), operateur:operateur.trim(), at:now.toISOString(), mois:monthKey(now), ...auteur() };
+      min:fin(min)?min:null, max:fin(max)?max:null, hrMin:null, hrMax:null, tempConforme:!horsCible, conforme, statut, motif, contreMesureDe:cm?cm._id:"", action:"", commentaire:P.comment.trim(), operateur:operateur.trim(), at:now.toISOString(), mois:monthKey(now), ...auteur() };
     btn.disabled=true;
     try{
       const ref=RELEVES.doc();
       await withRetry(()=>ref.set(doc));
       memoriser(ref.id,doc);
-      if(statut==="ecart"){
-        // Mesure initiale enregistrée : même cellule, produit et lot, pour saisir la contre-mesure
-        P.mesures=[""]; P.choix=null; P.action=""; P.comment="";
-        toast("Écart enregistré. Saisissez maintenant la contre-mesure.");
-        renderProduit(); const c=document.getElementById("cmcard"); if(c) c.scrollIntoView({block:"start"});
-        return;
-      }
       P.produit=null; P.lot=""; P.mesures=[""]; P.choix=null; P.action=""; P.comment="";
-      toast(cm?"Contre-mesure enregistrée":statut==="normal"?"Contrôle enregistré (hors cible – normal)":"Contrôle enregistré"); renderProduit(); window.scrollTo(0,0);
+      toast(cm?"Contre-mesure enregistrée":statut==="normal"?"Contrôle enregistré (hors cible, relevé indicatif)":"Contrôle enregistré"); renderProduit(); window.scrollTo(0,0);
     }catch(e){ show(errMsg(e)); btn.disabled=false; }
   }
 
@@ -824,7 +809,8 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       const hOk=!frigo||arret||!hrTxt?null:inRange(hv,fnum(d.hrMin),fnum(d.hrMax));
       return { arret, temps, hrTxt, hv, tOk, hOk, horsCible:!arret&&(tOk===false||hOk===false) };
     };
-    const maj=()=>{ const L=lire(); g("e-mes").classList.toggle("hidden",L.arret); g("e-hc").classList.toggle("hidden",!L.horsCible); g("e-act").classList.toggle("hidden",!(L.horsCible&&E.choix==="ecart")); };
+    // Contrôle à cœur : pas de motif ni d'action corrective (relevé indicatif)
+    const maj=()=>{ const L=lire(); g("e-mes").classList.toggle("hidden",L.arret); g("e-hc").classList.toggle("hidden",!frigo||!L.horsCible); g("e-act").classList.toggle("hidden",!(frigo&&L.horsCible&&E.choix==="ecart")); };
     el.querySelectorAll("[data-eetat]").forEach(b=>b.addEventListener("click",()=>{ E.etat=b.dataset.eetat; el.querySelectorAll("[data-eetat]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); maj(); }));
     g("et").addEventListener("input",maj); if(frigo) g("eh").addEventListener("input",maj);
     g("ech").addEventListener("change",e=>{ const v=e.target.value; E.choix=v==="ecart"?"ecart":v?motifs[+v.slice(1)]:""; maj(); });
@@ -834,8 +820,8 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       const L=lire(), raison=g("er").value.trim(), action=g("ea").value.trim(), commentaire=g("ec").value.trim();
       if(!L.arret&&(!L.temps.length||!L.temps.every(fin))) return show(frigo?"Saisissez la température.":"Saisissez chaque température à cœur, séparées par « / ».");
       if(frigo&&!L.arret&&L.hrTxt&&(!fin(L.hv)||L.hv<0||L.hv>100)) return show("L'hygrométrie doit être un pourcentage entre 0 et 100.");
-      if(L.horsCible&&!E.choix) return show("Mesure hors cible : choisissez le motif, ou « Écart ».");
-      const statut=!L.horsCible?"conforme":(E.choix==="ecart"?"ecart":"normal"), motif=statut==="normal"?E.choix:"";
+      if(frigo&&L.horsCible&&!E.choix) return show("Mesure hors cible : choisissez le motif, ou « Écart ».");
+      const statut=!L.horsCible?"conforme":(!frigo?"normal":E.choix==="ecart"?"ecart":"normal"), motif=statut!=="normal"?"":frigo?E.choix:MOTIF_COEUR;
       if(statut==="ecart"&&!action) return show("Décrivez l'action corrective.");
       if(statut==="normal"&&estAutre(motif)&&!commentaire) return show("Motif « Autre » : précisez-le dans les remarques.");
       if(!raison) return show("Indiquez la raison de la modification.");
