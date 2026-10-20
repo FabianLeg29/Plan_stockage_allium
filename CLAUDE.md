@@ -1,94 +1,136 @@
-# Plan de stockage — Échalotes & Oignons (SAS La Légumière)
+# Plan de stockage + Relevés de température (SAS La Légumière) — PRODUCTION
 
-Application web de suivi du stockage d'échalotes et d'oignons en entrepôt/frigo, pour l'entreprise **la légumière**. Ce fichier résume ce qui a été construit, pour que n'importe quelle session Claude (ou un autre développeur) reprenne le contexte rapidement sans relire tout le code.
+Ce dépôt (`Plan_stockage_allium`) est la **production** de l'application, publiée par GitHub Pages depuis la branche `claude/stockage-echalotes-oignons-6m4x91` à l'adresse https://fabianleg29.github.io/Plan_stockage_allium/. La version à trois modules (accueil, plan, relevés, administration) y a été basculée depuis le dépôt de test `STOCKAGE-PLAN-TEMP-TEST` (voir `BASCULE.md`) ; l'étiquette Git `avant-bascule` marque le dernier commit de l'ancienne application. Le détail du code du plan (ancien `index.html`, désormais `plan.html`) est décrit dans **`PLAN-DETAILS.md`**. Ce fichier résume ce qui a été construit, pour que n'importe quelle session Claude (ou un autre développeur) reprenne le contexte rapidement sans relire tout le code.
+
+## Règles absolues de ce dépôt
+
+1. La branche publiée est `claude/stockage-echalotes-oignons-6m4x91` : tout ce qui y est poussé part en production. Tester d'abord les évolutions dans le dépôt de test, puis les reporter ici.
+2. Une seule configuration Firebase dans tout le dépôt : celle du projet de **production** `plan-de-stockage-alliums`.
+3. Le nouveau code ne modifie aucune donnée existante :
+   - `planStockage/main` garde exactement sa structure. Les champs `lots` et `transactions` ne sont jamais écrits par les nouveaux modules, sauf deux actions explicites d'un admin du plan dans Administration : l'import d'une sauvegarde, qui remplace tout comme l'ancien onglet Cellules, et l'archivage de l'historique du plan, désactivé par défaut.
+   - `users` : seul le champ `roleReleves` est ajouté. Le champ `role` fonctionne comme avant.
+4. **Jamais de sauvegarde JSON de données réelles dans le dépôt**, qui est public car GitHub Pages est gratuit. L'import se fait depuis Administration.
+5. Pas d'outil de construction, pas de dépendance externe obligatoire. Le SDK Firebase est en version compat 10.13.2, comme avant.
 
 ## Vue d'ensemble
 
-- **Un seul fichier** `index.html` — HTML + CSS + JavaScript vanilla (pas de framework, pas de build). Tout est dans une balise `<script>` en IIFE.
-- **Multi-utilisateur en temps réel** via Firebase : Authentication (email/mot de passe) + Firestore (base de données). Sans Firebase, pas de partage de données entre utilisateurs — c'est une contrainte assumée, pas une option à retirer.
-- **Toutes les données** (cellules, lignes, palox, historique, listes produits/calibres) sont stockées dans **un seul document Firestore** (`planStockage/main`), sous forme d'un unique JSON (`state`), synchronisé en temps réel via `onSnapshot`.
-- **Hébergement** : GitHub Pages.
-  - Racine du dépôt (`index.html`) = la vraie application, connectée à Firebase (config déjà remplie dans le fichier, projet `plan-de-stockage-alliums`).
-  - Dossier `/docs` (`docs/index.html`) = une **démo autonome sans Firebase** (données seed + bandeau de changement de rôle), utilisée pour montrer l'avancement sans toucher aux vraies données. Elle n'est pas maintenue en continu — à régénérer manuellement depuis `index.html` si besoin (enlever le SDK Firebase, remplacer la persistance par du state local).
+HTML + CSS + JavaScript vanilla, un fichier par page, script en IIFE. Multi-utilisateur en temps réel via Firebase : Authentication (email et mot de passe) et Firestore. La session est partagée entre les pages, car elles sont sur la même origine.
 
-## Rôles et droits (3 niveaux)
+| Fichier | Rôle |
+|---|---|
+| `index.html` | Connexion, puis **accueil** « Que voulez-vous faire ? » avec 3 tuiles : Plan de stockage, Relevés des températures (grisée si `roleReleves` = none), Administration (visible si `role` = admin ou `roleReleves` = admin). Badge « Archivage à faire » sur la tuile Administration. Bouton Déconnexion. |
+| `plan.html` | L'application historique (ancien `index.html`), code **inchangé** sauf : boutons d'onglet Cellules et Comptes retirés, barre de module ajoutée, et blocage du rôle « Aucun accès » (message « Accès non autorisé » au lieu du plan). Les fonctions de ces onglets restent dans le code, inutilisées : c'est voulu, pour garder un code identique à l'original. |
+| `releves.html` | Module relevés de température (onglets Frigos, Produits, Historique). |
+| `admin.html` | Administration, 4 rubriques (voir plus bas). |
+| `xlsx-releves.js` | Générateur Excel sans dépendance (`window.XlsxReleves.construire(releves, chambres, options)`). Onglets Tableau (STOC E12.1), Graphiques (un par chambre, avec les cibles), Données graphiques, Détail. Utilisé par `releves.html` et `admin.html`. |
+| `firestore.rules` | Règles de sécurité de **référence** : l'utilisateur les publie lui-même dans la console. |
+| `ancien-plan.html` | Copie à l'identique de l'ancien `index.html` (commit `021e29f`), gardée comme référence de comparaison pour `plan.html`. Aucun lien depuis l'application. |
+| `PLAN-DETAILS.md` | Ancien `CLAUDE.md` : description détaillée du code du plan (aujourd'hui `plan.html`). |
+| `docs/index.html` | Ancienne démo autonome du plan seul, sans Firebase, non maintenue. |
+| `SETUP-FIREBASE.md` | Guide de configuration Firebase. |
+| `BASCULE.md` | Procédure de bascule depuis le dépôt de test (déjà réalisée) : choix retenu, points d'attention sur les comptes, étapes, consigne pour la session Claude Code de production, retour arrière, feuille de bascule. |
 
-Stockés dans Firestore, collection `users`, un document par compte (`id` = UID Firebase Auth), champs `email` + `role`.
+**Cache local Firestore** (accueil, relevés, administration ; pas `plan.html`) : `enablePersistence({ synchronizeTabs: true })`. Les données déjà vues s'affichent tout de suite au changement de page, puis le serveur les met à jour. La fiche `users` est lue d'abord dans le cache, puis vérifiée auprès du serveur (`lireFiche`) : si le rôle a changé, la page se recharge. La déconnexion (accueil) vide le cache du poste. Dans l'Administration, le document du plan n'est chargé qu'à l'ouverture des rubriques Plan de stockage et Archives.
 
-- **`admin`** : tout + onglets **Cellules** (config des cellules/lignes) et **Comptes** (voir tous les comptes, changer leur rôle) + gestion des listes **Produits**/**Calibres** + suppression de lignes d'historique.
-- **`editor`** (« Gestion ») : entrée/sortie/déplacement/modification de stock. Pas d'accès à Cellules ni Comptes.
-- **`viewer`** (« Consultation ») : lecture seule. Rôle par défaut si aucun document `users/{uid}` n'existe.
+**Navigation** : une barre de module identique sur plan, relevés et administration. À gauche, le nom du module avec son repère de couleur (plan #963E88, relevés #62B4BB, administration #D2C9B4). À droite, le bouton blanc « Accueil » (lien vers `index.html`). On ne passe d'un module à l'autre que par l'accueil.
 
-Logique dans le code : `canManageStock()` = editor||admin, `isAdmin()` = admin seul. Règles Firestore équivalentes dans `firestore.rules`.
+## Rôles
 
-Un compte ne peut pas changer son propre rôle (sécurité anti-blocage). Création de compte = toujours via la console Firebase (pas de self-signup dans l'app) ; l'admin peut ensuite lui assigner un rôle depuis l'onglet Comptes.
+Collection `users`, un document par compte (`id` = UID Firebase Auth), champs `email`, `role`, `roleReleves`.
 
-## Modèle de données
+- `role` (plan) : `none` (« Aucun accès » : tuile Plan grisée, lecture du plan refusée par les règles), `viewer` (« Consultation », par défaut si absent), `editor` (« Gestion ») ou `admin`. `canManageStock()` = editor ou admin, `isAdmin()` = admin seul.
+- `roleReleves` (relevés) : `none` (par défaut si absent), `viewer` (historique seul, lecture seule), `editor` (saisie) ou `admin` (saisie, plus les rubriques relevés et archives de l'Administration).
+- **Compte sans fiche `users`** (créé dans Authentication mais pas déclaré) : refusé. Les règles lui interdisent la lecture du plan (`estConnu()`). L'accueil, les relevés et l'administration affichent « Compte non autorisé, contactez un administrateur » puis le déconnectent.
+- Seul un **admin du plan** attribue les rôles (rubrique Comptes et accès). Un compte ne peut jamais modifier le sien. Création de compte : toujours dans la console Firebase.
+- Un admin du plan a aussi accès aux rubriques relevés et archives de l'Administration, même si son `roleReleves` vaut none.
+
+## Données Firestore
 
 ```
-state = {
-  cellules: [ { id, nom, lignes: [ { id, nom, capacite } ] } ],
-  lots: [ /* CHAQUE ENTRÉE = UN PALOX PHYSIQUE, pas un lot agrégé */
-    {
-      id, celluleId, ligneId, batchId,   // batchId regroupe les palox entrés ensemble (même produit/lot/calibre/traitement/emplacement)
-      produit, lot, lot2,                // lot2 optionnel = palox mixte
-      parcelle, calibre, traitement,     // traitement = booléen "antigerme"
-      poidsSorti,                        // booléen, classement produit pour la facturation (indépendant du poids réel)
-      poids, poidsLot2,                  // poids par palox, obligatoire à l'entrée
-      dateEntree, commentaire
-    }
-  ],
-  transactions: [ { id, type: 'entree'|'sortie'|'deplacement'|'modification', date, produit, lot, quantite, poids, label/fromLabel+toLabel, commentaire, responsable } ],
-  produits: [ "Echalote", "Echalion", ... ],   // liste fermée, gérée par l'admin (onglet Comptes)
-  calibres: [ "20/40", "40/60", ... ],         // idem, liste fermée gérée par l'admin
-  produitFamilles: { "Echalote": "Echalote", "Oignon de Roscoff": "Oignon", ... },  // famille par produit (Echalote/Oignon/Ail)
-  calibreFamilles: { "20/40": ["Echalote"], "40/50": ["Echalote","Oignon"], ... }   // famille(s) par calibre — un calibre peut appartenir à plusieurs familles
-}
+planStockage/main   { data: "<JSON du state>", updatedAt }   ← inchangé
+  state = { cellules:[{id,nom,nonAchetee,lignes:[{id,nom,capacite}]}], lots:[palox…], transactions:[…], produits:[…], calibres:[…],
+            produitFamilles:{ produit: 'Echalote'|'Oignon'|'Ail' }, calibreFamilles:{ calibre: ['Echalote',…] } }
+users/{uid}         { email, nom (facultatif), role, roleReleves }
+releves/{id}        { type:'frigo'|'produit', lieu, etat:'service'|'vide'|'arret' ('' pour produit), produit, lot,
+                      temp, temps:[…], hr, min, max, hrMin, hrMax, tempConforme, hrConforme (frigo), conforme,
+                      statut:'conforme'|'normal'|'ecart', motif, contreMesureDe (id de l'écart d'origine ou ''),
+                      action, commentaire, operateur, at (ISO), mois ('AAAA-MM'),
+                      uid (auteur), creeLe (Timestamp serveur), modifications:[{le, par, raison, avant:{…}}],
+                      restaure:{le, par, fichier, uidOrigine, creeLeOrigine, archive} (seulement si recréé par l'import JSON) }
+temperatures/config { frigos:[{nom,famille:'legumes'|'alliums',hygro:bool,min,max,hrMin,hrMax}], produits:[{nom,min,max}],
+                      motifs:[texte…] }   ← listes propres aux relevés
+archives/{id}       { type:'releves'|'mouvements', mois:['AAAA-MM'], du, au, nb, creeLe (ISO), par (email),
+                      expireLe (Timestamp ou null = illimitée), donnees (JSON en texte) }
+parametres/conservation { relArchiveApresMois (13), relConservationAns (5), planArchiveApresMois (0 = jamais), planConservationAns (0) }
 ```
-
-`FAMILLES` (constante JS, non admin-éditable) = `['Echalote','Oignon','Ail']`. Chaque produit a une famille (assignée par l'admin dans Comptes, ou déduite automatiquement du nom à la migration). Chaque calibre est tagué avec une ou plusieurs familles (checkbox par famille dans l'admin Calibres) ; un calibre sans famille cochée reste proposé à tous les produits. Le `<select>` Calibre du formulaire d'entrée/modification se recalcule dynamiquement (`calibreOptionsHtml(selected, famille)`) quand le produit change, via `familleForProduit()`.
 
 Points importants :
-- **Un palox = une ligne dans `state.lots`.** Plusieurs palox entrés ensemble partagent un `batchId` pour l'affichage groupé ("carte de lot").
-- **`groupByBatch()`** reconstruit les cartes de lot à partir de `state.lots`, clé = `batchId+celluleId+ligneId`.
-- **Fusion automatique des batchId** dans `migrate()` : si plusieurs entrées partagent exactement produit+lot+lot2+calibre+traitement+emplacement, elles sont fusionnées sous un seul `batchId` (évite la fragmentation causée par des modifications successives).
-- **Remplissage d'une ligne** = capacité en nombre de palox (`ligne.capacite`), pas de notion de hauteur/position précise (modèle simplifié volontairement).
-- **Couleur par produit** : palette fixe par mots-clés (`FIXED_PRODUCT_COLORS`, normalisation accents/casse) — échalote=gris, échalion=bleu, échalote de semis=mauve, oignon de roscoff=rose, oignon rouge=rouge, oignon jaune=jaune ; hash de fallback pour tout produit non reconnu.
+- **Version de référence** : `plan.html` = ancien `index.html` au commit `021e29f` (20/10/2026, copié dans `ancien-plan.html`) + 3 retouches (onglets retirés, barre de module, blocage du rôle `none`).
+- **Familles** (reprises de la production) : `FAMILLES = ['Echalote','Oignon','Ail']`. Chaque produit a une famille, déduite du nom par `migrate()` si absente. Chaque calibre a zéro, une ou plusieurs familles ; sans famille, il est proposé à tous les produits. Le plan filtre les calibres selon la famille du produit. Réglage dans Administration › Plan de stockage. `majPlan` écrit `cellules`, `produits`, `calibres`, `produitFamilles` et `calibreFamilles`.
+- **Plan** : le state est stocké en texte JSON dans le champ `data`, et pas `state`. Un palox est une entrée de `lots`. `migrate()` normalise le state à chaque lecture (voir `plan.html`).
+- **Statut d'un relevé** :
+  - `conforme` : la mesure est dans la cible.
+  - `normal` (« Hors cible – normal ») : hors cible, mais l'opérateur a choisi un **motif** dans la liste gérée par l'admin (dégivrage, chargement récent…). Ni action corrective ni contre-mesure : le prochain relevé se fait à la tournée suivante. Un motif commençant par « Autre » oblige à remplir les remarques.
+  - `ecart` : hors cible sans motif. **Action corrective obligatoire**. La mesure initiale est enregistrée, puis l'écran reste sur la même chambre (ou la même cellule, le même produit et le même lot) pour saisir **aussitôt la contre-mesure**, sans délai. Un bouton « Faire la contre-mesure plus tard » permet de la reporter : la chambre affiche alors « Contre-mesure à faire ».
+  - Le champ `conforme` vaut `false` uniquement pour un écart. Les anciens relevés sans `statut` sont lus à partir de `conforme`.
+  - Une contre-mesure est un nouveau relevé dont `contreMesureDe` contient l'id de l'écart (le relevé d'origine n'est jamais modifié). Elle reste « à faire » tant qu'aucun relevé n'a suivi l'écart le même jour : même chambre pour un frigo ; même cellule, même produit et même lot pour un contrôle à cœur.
+- **Modification / suppression d'un relevé** (Historique, liste détaillée) :
+  - Qui : l'**auteur** (rôle Gestion ou Admin relevés) pendant **24 h** après la création (`creeLe`), ou un **admin relevés / admin du plan** à tout moment. Un compte Consultation ne peut rien changer. Les relevés anciens sans `uid` ni `creeLe` ne sont modifiables que par un admin.
+  - Modification : raison obligatoire, statut recalculé (conforme / normal / écart, avec motif ou action corrective). Les valeurs d'avant sont ajoutées à `modifications` (qui, quand, pourquoi). La date, la chambre, le type, l'auteur et `creeLe` ne changent jamais (contrôlé par les règles).
+  - Suppression : définitive, après confirmation.
+  - L'export Excel (onglet Détail) a une colonne « Modifications ».
+- **Export JSON des relevés** (`format: 'releves-temperature'`, `version: 1`) : `{ exporteLe, exportePar, perimetre, config:{frigos,produits,motifs}, nb, releves:[{ id, …champs du relevé }] }`. Les Timestamp (`creeLe`) sont convertis en texte ISO. Sert à réintégrer les données ailleurs, ou à les restaurer ici par l'import.
+- **Import JSON des relevés** (Administration › Relevés, rôle relevés Admin seulement, car les règles réservent la création aux rôles relevés Gestion et Admin) : un aperçu est affiché avant toute écriture. Seuls les relevés **absents** sont recréés, avec leur id d'origine. Sont ignorés : un id déjà présent, un relevé dont l'archive existe encore, une ligne invalide. Rien n'est écrasé ni supprimé. Comme les règles imposent `uid` = auteur et `creeLe` = heure serveur, l'auteur et la date de création d'origine sont gardés dans `restaure`. Écriture par lots de 400. Un import interrompu se relance avec le même fichier. Les réglages ne sont remplacés que si la case est cochée.
+- **Relevés du mois** : requête par plage sur `at` (index simple, sans index composite à créer).
+- **temperatures/config absent** : il est initialisé avec les 15 chambres de la fiche STOC E12.1 (LP1, LP2, LP3, LBP, Zone prépa, Cellule 1 à 8, Cellule ail, Cellule carotte), avec une liste de produits vide.
+- **Hygrométrie par chambre** (`hygro`) : case « Hygro » dans Administration. Par défaut, pas d'hygrométrie pour LP2, LP3, LBP, Zone prépa, Cellule ail et Cellule 8 (déduit du nom si le champ manque). Sans hygrométrie : pas de zone de saisie dans les relevés, ni de colonne Hygro dans le tableau STOC de l'Excel.
+- **Famille des chambres** (`famille`) : `legumes` (frigos légumes : LP1, LP2, LP3, LBP, Zone prépa, Cellule carotte par défaut) ou `alliums` (toutes les autres). L'admin la règle dans Administration, rubrique Relevés de température. Si le champ manque (anciens réglages), il est déduit du nom. Dans les relevés, la tournée est affichée par groupe (frigos légumes, puis cellules alliums), et **seules les cellules alliums sont proposées pour le contrôle à cœur**. L'écriture est faite par le premier admin qui ouvre l'Administration ou les relevés. Les autres rôles voient cette liste par défaut sans l'écrire.
+- **Archives** : au plus **400 lignes par archive**, à cause des limites Firestore (1 Mo par document, 500 opérations par lot). Il y a une archive par mois, et plusieurs si le mois dépasse 400 lignes. Pour les relevés, chaque archive est créée dans le **même lot d'écritures** que la suppression de ses relevés, donc tout ou rien. Pour l'historique du plan, c'est le même principe : une transaction par archive sur `planStockage/main`, qui crée l'archive et retire ses mouvements du seul champ `transactions`. Si l'archivage s'interrompt, les archives déjà faites sont complètes et on relance pour le reste. Firebase gratuit ne permet pas de tâche planifiée : l'archivage se lance à la main.
+- **Lecture des archives** : pour un admin relevés qui n'est pas admin du plan, toute requête sur `archives` doit filtrer sur `type == 'releves'`, sinon les règles la refusent (c'est déjà le cas dans `admin.html` et `releves.html`).
 
-## Onglets de l'application
+## Administration (`admin.html`)
 
-- **Stockage** : plan par cellule → lignes, barre de remplissage segmentée par produit, clic sur une ligne ou un produit → détail du lot (cartes avec palox individuels, cases à cocher + "Tout sélectionner", actions Sortir/Déplacer/Modifier/Supprimer la sélection). Bouton "+ Entrée" global et un bouton "+ Entrée" par ligne (pré-remplit cellule/ligne).
-- **Recherche** ("Consultation des stocks") : filtres cellule/produit/calibre/lot + recherche libre multi-mots multi-colonnes (chaque mot peut matcher une colonne différente). Résultats groupés par produit avec sous-total par groupe + total général. Export Excel (CSV point-virgule, BOM UTF-8).
-- **Stock global** : vue d'ensemble par produit+calibre, bascule "toutes cellules" / "par cellule", avec ligne de totaux.
-- **Historique** : toutes les transactions (entrée/sortie/déplacement/modification), colonne **Responsable** (email du compte connecté, stampé automatiquement par `addTx()`), suppression de ligne réservée à l'admin.
-- **Cellules** (admin uniquement) : configuration des cellules/lignes/capacités, sauvegarde manuelle (export/import JSON de secours).
-- **Comptes** (admin uniquement) : liste des comptes + changement de rôle, gestion de la liste **Produits**, gestion de la liste **Calibres**.
+- **a) Comptes et accès** (admin du plan) : par compte, nom (facultatif), rôle plan et rôle relevés en listes déroulantes, enregistrement immédiat. Pour son propre compte, seul le nom est modifiable.
+- **b) Plan de stockage** (admin du plan) : repris **à l'identique** des anciens onglets Cellules et Comptes, version de production `021e29f` (familles des produits et des calibres comprises). Mêmes textes, même tri alphabétique, mêmes contrôles et messages (doublons, stock présent, capacité inférieure au stock). Sauvegarde manuelle par export et import JSON. Chaque modification est enregistrée immédiatement par **transaction** : relecture de `planStockage/main`, contrôles refaits sur les données fraîches, puis seuls `cellules`, `produits`, `calibres`, `produitFamilles` et `calibreFamilles` sont remplacés.
+- **c) Relevés de température** (admin relevés ou admin du plan) : liste des motifs « hors cible – normal », chambres (famille Légumes ou Alliums, T° mini et maxi, case Hygro puis hygrométrie mini et maxi : ces deux champs ne sont saisissables que si Hygro est coché, et décocher les efface) et produits du contrôle à cœur (mini et maxi), avec un bouton Enregistrer. Bouton « Exporter tous les relevés (JSON) » : relevés en cours et archivés (champ `archive` = id de l'archive), réglages des relevés, en un seul fichier. Bouton « Importer un fichier JSON » : restauration des relevés manquants (voir plus haut).
+- **d) Archives et conservation** : durées réglables (les durées de l'historique du plan ne sont visibles que de l'admin du plan), boutons « Archiver maintenant », liste des archives, export Excel avec graphiques (relevés) ou CSV (mouvements), et JSON. Suppression seulement après l'échéance, avec confirmation.
 
-## Règles de saisie importantes
+## Relevés (`releves.html`)
 
-- **Produit** et **Calibre** : listes déroulantes fermées (pas de texte libre), gérées par l'admin. Une valeur legacy hors-liste reste affichée (marquée "hors liste") pour ne pas perdre de données historiques.
-- **Poids par palox** : obligatoire à l'entrée (les deux poids si palox mixte avec lot2). Optionnel en modification (pour ne pas bloquer la correction d'anciennes entrées sans poids connu).
-- **Traitement** : case à cocher "Traitement antigerme" (oui/non), pas de texte libre.
+- **Frigos** : tournée guidée (après chaque enregistrement, retour à la liste des chambres : la suivante non relevée, dans l'ordre affiché, est marquée « Proposée ensuite » en pointillés sans être ouverte ; le cadre d'une chambre relevée dans la journée devient vert, orange si hors cible – normal, rouge tant qu'une contre-mesure est à faire ; chaque carte affiche la cible et, tant que la chambre n'est pas relevée aujourd'hui, la dernière température relevée avec sa date, en couleur si elle était hors cible ; le mois précédent est lu une fois pour les débuts de mois), état En service, Vide ou À l'arrêt, température avec échelle et cible, hygrométrie facultative, action corrective obligatoire en cas d'écart.
+- **Produits** : contrôle à cœur de 1 à 5 mesures par produit, dans une cellule **alliums** uniquement, avec numéro de lot facultatif.
+- **Historique, liste détaillée** : boutons Modifier / Supprimer dans la dernière colonne, fixée au bord droit sur ordinateur (la page s'élargit dans l'onglet Historique) ; sur téléphone (700 px ou moins), chaque relevé s'affiche en fiche, avec les boutons à droite.
+- **Historique** : tableau du mois au format STOC E12.1 (dernier relevé du jour par chambre) ; un clic sur une case ouvre la ligne dans la liste détaillée. Filtres, export Excel et export JSON du mois (même périmètre que l'Excel). **Chambres affichées** : liste déroulante (toutes les chambres, tous les frigos légumes, toutes les cellules alliums, ou une seule chambre) ; le choix s'applique au tableau, à la liste et à l'export ; il revient à « Toutes les chambres » à chaque arrivée sur l'onglet Historique (plus de mémorisation sur le poste). Un clic sur une case du tableau du mois ouvre la liste détaillée filtrée sur cette chambre, ligne mise en évidence ; « Revenir au tableau du mois » rétablit le choix d'avant.
+- Avec le rôle Consultation, seul l'Historique est accessible.
+- Une lecture refusée (par exemple les archives pour un non-admin) affiche un message simple, jamais d'erreur bloquante.
+- **Opérateur** : par défaut, le compte connecté (champ `nom` de sa fiche `users`, sinon le début de l'e-mail). Une correction est mémorisée dans le `localStorage` du poste **pour ce compte seulement**.
 
-## Fichiers du dépôt
+## Règles Firestore (résumé)
 
-- `index.html` — l'application (production, connectée à Firebase).
-- `docs/index.html` — démo statique pour GitHub Pages / partage rapide (pas synchronisée automatiquement avec `index.html`).
-- `firestore.rules` — règles de sécurité Firestore (rôles, lecture/écriture).
-- `SETUP-FIREBASE.md` — guide pas-à-pas de configuration Firebase (création projet, règles, comptes, domaines autorisés).
-- `README.md` — minimal, ne pas s'y fier pour le contexte (voir ce fichier à la place).
-
-## Déploiement actuel
-
-- Branche de dev : `claude/stockage-echalotes-oignons-6m4x91`.
-- GitHub Pages activé sur cette branche, dossier racine → `https://fabianleg29.github.io/Plan_stockage_allium/` (la vraie app).
-- Projet Firebase : `plan-de-stockage-alliums` (Spark/gratuit), Auth email+mot de passe + Firestore en mode production.
-- Le dépôt GitHub est **public** (nécessaire pour Pages gratuit) ; ce n'est pas un risque car la config Firebase n'est pas un secret, la sécurité repose sur les règles Firestore + Auth.
+Les règles du plan (`users`, `planStockage`) sont inchangées, à deux exceptions près : chacun peut modifier le seul champ `nom` de sa propre fiche `users` ; et la lecture de `planStockage` exige `estConnu()`, c'est-à-dire un compte connecté qui possède une fiche `users`, et un rôle plan différent de `none`. La lecture de sa propre fiche `users` reste autorisée. Ajouts :
+- `releves` : lecture pour roleReleves viewer et plus, ou admin du plan. Création pour editor ou admin relevés, avec des champs validés, `uid` = auteur et `creeLe` = heure serveur. Modification (champs de mesure, de statut et de texte seulement) et suppression : par l'auteur pendant 24 h, ou par un admin relevés / admin du plan (suppression aussi utilisée par l'archivage).
+- `temperatures` : lecture comme `releves`, écriture par un admin relevés ou un admin du plan.
+- `archives` : lecture et création des archives de relevés par un admin relevés ou un admin du plan ; archives de mouvements réservées à l'admin du plan. Jamais modifiées. Suppression seulement si `expireLe` est dépassé.
+- `parametres` : admins. Un admin relevés qui n'est pas admin du plan ne peut pas changer les durées de l'historique du plan.
 
 ## Style / thème
 
-Palette inspirée du logo **la légumière** ("Cap sur le bon goût !") : accent violet/magenta (`--copper: #963E88`), vague dégradée décorative (`--wave-1`/`--wave-2`) sous l'en-tête et la carte de connexion, icône oignon+échalote (au lieu d'une pomme) sur l'écran de connexion et l'en-tête.
+- Logo La Légumière (image JPEG en base64, reprise de la production) : écran de connexion de l'accueil (grand, centré) et du plan.
+- Plan, accueil et administration : palette du logo **la légumière** (`--copper: #963E88`, vague `--wave-1`/`--wave-2`, polices Fraunces et Inter).
+- Relevés : thème bleu-vert du module (police Barlow, `--brand: #1F5C63`), avec un mode sombre.
+- Téléphone (390 px) : aucun débordement horizontal, zones tactiles d'au moins 44 px.
+
+## Déploiement
+
+- Projet Firebase de production : `plan-de-stockage-alliums`. La configuration est dans `index.html`, `plan.html`, `releves.html` et `admin.html` (identique à celle de `ancien-plan.html`).
+- GitHub Pages publie la branche `claude/stockage-echalotes-oignons-6m4x91` : https://fabianleg29.github.io/Plan_stockage_allium/
+- Les règles `firestore.rules` sont publiées à la main dans la console Firebase.
+- Le domaine GitHub Pages (`fabianleg29.github.io`) doit figurer dans Authentication, Settings, Authorized domains.
+- Le dépôt est public : ce n'est pas un risque pour la configuration Firebase, qui n'est pas un secret. La sécurité repose sur Auth et les règles Firestore.
 
 ## Pour continuer le développement
 
-Ouvrir ce dépôt avec Claude Code (ou coller ce fichier en contexte) suffit à comprendre l'architecture sans relire les ~1500 lignes de `index.html`. Toujours valider la syntaxe JS après édition (`node --check` sur le contenu du `<script>`) avant de commit/push, et pousser sur la branche `claude/stockage-echalotes-oignons-6m4x91`.
+- À chaque mise à jour publiée, incrémenter `VERSION` dans `index.html` : les liens de l'accueil ajoutent `?v=VERSION`, ce qui évite d'ouvrir une ancienne copie des modules gardée en cache.
+- Toujours valider la syntaxe après édition : `node --check` sur le contenu de chaque `<script>` en ligne, et sur `xlsx-releves.js`.
+- Garder `plan.html` aussi proche que possible de l'original. Une comparaison avec l'ancien `index.html` (`ancien-plan.html`) ne doit montrer que les retraits des deux onglets, la barre de module et le blocage du rôle `none` (aucune différence de configuration Firebase).
+- Pour tester sans toucher au projet réel : passer par le dépôt de test, ou émulateur Firebase local (`firebase emulators:exec --only firestore,auth`), en faisant pointer les pages vers l'émulateur au moment du test.
