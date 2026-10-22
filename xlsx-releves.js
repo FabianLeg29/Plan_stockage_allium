@@ -167,7 +167,8 @@
       t4.push([fr(jour(r.at)), hm(r.at), r.type === 'frigo' ? 'Frigo' : 'À cœur', r.lieu, r.type === 'frigo' ? ({ service: 'En service', vide: 'Vide', arret: 'À l\'arrêt' }[r.etat] || '') : '', r.produit || '', r.lot || '',
         { v: r.etat === 'arret' ? '' : r.temp, s: st === 'ecart' ? 3 : 2 }, ts.length > 1 ? ts.map(function(v){ return String(v).replace('.', ','); }).join(' / ') : '',
         { v: r.min, s: 2 }, { v: r.max, s: 2 }, { v: r.hr == null ? '' : r.hr, s: 6 }, st === 'ecart' ? { v: LIB.ecart, s: 7 } : LIB[st], r.motif || '', r.contreMesureDe ? (o ? 'Écart du ' + fr(jour(o.at)) + ' ' + hm(o.at) : 'Écart précédent') : '', r.operateur || '', r.action || '', r.commentaire || '',
-        (r.modifications || []).map(function(m){ return fr(jour(m.le)) + ' ' + hm(m.le) + ' par ' + (m.par || '?') + ' : ' + (m.raison || ''); }).join(' ; ')]);
+        (r.saisieDifferee && r.saisieDifferee.le ? ['Saisie différée le ' + fr(jour(r.saisieDifferee.le)) + ' ' + hm(r.saisieDifferee.le) + ' par ' + (r.saisieDifferee.par || '?') + ' (relevé papier)'] : [])
+          .concat((r.modifications || []).map(function(m){ return fr(jour(m.le)) + ' ' + hm(m.le) + ' par ' + (m.par || '?') + ' : ' + (m.raison || ''); })).join(' ; ')]);
     });
 
     var sheets = [
