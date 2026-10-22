@@ -8,7 +8,7 @@ Application web de suivi du stockage d'échalotes et d'oignons en entrepôt/frig
 
 - **Un seul fichier** `index.html` — HTML + CSS + JavaScript vanilla (pas de framework, pas de build). Tout est dans une balise `<script>` en IIFE.
 - **Multi-utilisateur en temps réel** via Firebase : Authentication (email/mot de passe) + Firestore (base de données). Sans Firebase, pas de partage de données entre utilisateurs — c'est une contrainte assumée, pas une option à retirer.
-- **Toutes les données** (cellules, lignes, palox, historique, listes produits/calibres) sont stockées dans **un seul document Firestore** (`planStockage/main`), sous forme d'un unique JSON (`state`), synchronisé en temps réel via `onSnapshot`.
+- **Toutes les données** (cellules, lignes, palox, historique, listes produits/calibres) sont stockées dans **un seul document Firestore** (`planStockage/main`), sous forme d'un unique JSON (`state`), synchronisé en temps réel via `onSnapshot`. **Depuis le 22/10/2026**, l'historique n'y est plus : une ligne = un document de la collection `planHistorique` (voir `CLAUDE.md`, « Historique du plan dans `planHistorique` »).
 - **Hébergement** : GitHub Pages.
   - Racine du dépôt (`index.html`) = la vraie application, connectée à Firebase (config déjà remplie dans le fichier, projet `plan-de-stockage-alliums`).
   - Dossier `/docs` (`docs/index.html`) = une **démo autonome sans Firebase** (données seed + bandeau de changement de rôle), utilisée pour montrer l'avancement sans toucher aux vraies données. Elle n'est pas maintenue en continu — à régénérer manuellement depuis `index.html` si besoin (enlever le SDK Firebase, remplacer la persistance par du state local).
@@ -62,7 +62,7 @@ Points importants :
 - **Stockage** : plan par cellule → lignes, barre de remplissage segmentée par produit, clic sur une ligne ou un produit → détail du lot (cartes avec palox individuels, cases à cocher + "Tout sélectionner", actions Sortir/Déplacer/Modifier/Supprimer la sélection). Bouton "+ Entrée" global et un bouton "+ Entrée" par ligne (pré-remplit cellule/ligne).
 - **Recherche** ("Consultation des stocks") : filtres cellule/produit/calibre/lot + recherche libre multi-mots multi-colonnes (chaque mot peut matcher une colonne différente). Résultats groupés par produit avec sous-total par groupe + total général. Export Excel (CSV point-virgule, BOM UTF-8).
 - **Stock global** : vue d'ensemble par produit+calibre, bascule "toutes cellules" / "par cellule", avec ligne de totaux.
-- **Historique** : toutes les transactions (entrée/sortie/déplacement/modification), colonne **Responsable** (email du compte connecté, stampé automatiquement par `addTx()`), suppression de ligne réservée à l'admin.
+- **Historique** : toutes les transactions (entrée/sortie/déplacement/modification), colonne **Responsable** (email du compte connecté, stampé automatiquement par `addTx()`), suppression de ligne réservée à l'admin. Depuis le 22/10/2026 : lignes lues dans `planHistorique`, 30 derniers jours par défaut (dates Du / Au), bouton « Exporter en Excel ».
 - **Cellules** (admin uniquement) : configuration des cellules/lignes/capacités, sauvegarde manuelle (export/import JSON de secours).
 - **Comptes** (admin uniquement) : liste des comptes + changement de rôle, gestion de la liste **Produits**, gestion de la liste **Calibres**.
 
