@@ -1,5 +1,5 @@
 // Générateur Excel des relevés de température (window.XlsxReleves), repris du prototype.
-// Utilisé par releves.html, admin.html et plan.html (tableau simple). Sans dépendance : produit un .xlsx (Uint8Array)
+// Utilisé par releves.html, admin.html, plan.html et mouvements.html (tableau simple). Sans dépendance : produit un .xlsx (Uint8Array)
 // avec les onglets Tableau (STOC E12.1), Graphiques, Données graphiques et Détail.
 (function(root){
   'use strict';

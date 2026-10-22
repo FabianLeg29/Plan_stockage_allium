@@ -8,7 +8,7 @@ Ce dépôt (`Plan_stockage_allium`) est la **production** de l'application, publ
 2. Une seule configuration Firebase dans tout le dépôt : celle du projet de **production** `plan-de-stockage-alliums`.
 3. Le nouveau code ne modifie aucune donnée existante :
    - `planStockage/main` garde exactement sa structure. Les champs `lots` et `transactions` ne sont jamais écrits par les nouveaux modules, sauf deux actions explicites d'un admin du plan dans Administration : l'import d'une sauvegarde, qui remplace tout comme l'ancien onglet Cellules, et le transfert de l'historique vers `planHistorique` (validé par l'utilisateur le 22/10/2026).
-   - `users` : seul le champ `roleReleves` est ajouté. Le champ `role` fonctionne comme avant.
+   - `users` : seuls les champs `roleReleves` et `roleMouvements` sont ajoutés. Le champ `role` fonctionne comme avant.
 4. **Jamais de sauvegarde JSON de données réelles dans le dépôt**, qui est public car GitHub Pages est gratuit. L'import se fait depuis Administration.
 5. Pas d'outil de construction, pas de dépendance externe obligatoire. Le SDK Firebase est en version compat 10.13.2, comme avant.
 
@@ -18,11 +18,12 @@ HTML + CSS + JavaScript vanilla, un fichier par page, script en IIFE. Multi-util
 
 | Fichier | Rôle |
 |---|---|
-| `index.html` | Connexion, puis **accueil** « Que voulez-vous faire ? » avec 3 tuiles : Plan de stockage, Relevés des températures (grisée si `roleReleves` = none), Administration (visible si `role` = admin ou `roleReleves` = admin). Badge « Archivage à faire » sur la tuile Administration. Bouton Déconnexion. |
+| `index.html` | Connexion, puis **accueil** « Que voulez-vous faire ? » avec 4 tuiles, dans cet ordre : Mouvements prestation (grisée si `roleMouvements` = none, sauf pour l'admin du plan), Plan de stockage, Relevés des températures (grisée si `roleReleves` = none), Administration (visible si `role`, `roleReleves` ou `roleMouvements` = admin). Badge « Archivage à faire » sur la tuile Administration (relevés seulement). Bouton Déconnexion. |
 | `plan.html` | L'application historique (ancien `index.html`), code **inchangé** sauf : boutons d'onglet Cellules et Comptes retirés, barre de module ajoutée, et blocage du rôle « Aucun accès » (message « Accès non autorisé » au lieu du plan). Les fonctions de ces onglets restent dans le code, inutilisées : c'est voulu, pour garder un code identique à l'original. **Écart volontaire (22/10/2026)** : l'historique est écrit dans `planHistorique` (un document par ligne), onglet Historique avec période (30 derniers jours par défaut) et export Excel. |
 | `releves.html` | Module relevés de température (onglets Frigos, Produits, Historique). |
-| `admin.html` | Administration, 4 rubriques (voir plus bas). |
-| `xlsx-releves.js` | Générateur Excel sans dépendance (`window.XlsxReleves.construire(releves, chambres, options)`). Onglets Tableau (STOC E12.1), Graphiques (un par chambre, avec les cibles), Données graphiques, Détail. Utilisé par `releves.html` et `admin.html`. Aussi `tableau(feuilles, options)` (classeur simple, sans graphique) et `dateExcel('AAAA-MM-JJ')` (style 8 = date), utilisés par l'export de l'historique dans `plan.html`. |
+| `admin.html` | Administration, 5 rubriques (voir plus bas). |
+| `mouvements.html` | Module **mouvements alliums prestation** (fiche E14.3, remplace le Google Form) : onglets Saisie et Historique. |
+| `xlsx-releves.js` | Générateur Excel sans dépendance (`window.XlsxReleves.construire(releves, chambres, options)`). Onglets Tableau (STOC E12.1), Graphiques (un par chambre, avec les cibles), Données graphiques, Détail. Utilisé par `releves.html` et `admin.html`. Aussi `tableau(feuilles, options)` (classeur simple, sans graphique) et `dateExcel('AAAA-MM-JJ')` (style 8 = date), utilisés par l'export de l'historique dans `plan.html` et par `mouvements.html`. |
 | `firestore.rules` | Règles de sécurité de **référence** : l'utilisateur les publie lui-même dans la console. |
 | `ancien-plan.html` | Copie à l'identique de l'ancien `index.html` (commit `021e29f`), gardée comme référence de comparaison pour `plan.html`. Aucun lien depuis l'application. |
 | `PLAN-DETAILS.md` | Ancien `CLAUDE.md` : description détaillée du code du plan (aujourd'hui `plan.html`). |
@@ -30,16 +31,17 @@ HTML + CSS + JavaScript vanilla, un fichier par page, script en IIFE. Multi-util
 | `SETUP-FIREBASE.md` | Guide de configuration Firebase. |
 | `BASCULE.md` | Procédure de bascule depuis le dépôt de test (déjà réalisée) : choix retenu, points d'attention sur les comptes, étapes, consigne pour la session Claude Code de production, retour arrière, feuille de bascule. |
 
-**Cache local Firestore** (accueil, relevés, administration ; pas `plan.html`) : `enablePersistence({ synchronizeTabs: true })`. Les données déjà vues s'affichent tout de suite au changement de page, puis le serveur les met à jour. La fiche `users` est lue d'abord dans le cache, puis vérifiée auprès du serveur (`lireFiche`) : si le rôle a changé, la page se recharge. La déconnexion (accueil) vide le cache du poste. Dans l'Administration, le document du plan n'est chargé qu'à l'ouverture des rubriques Plan de stockage et Archives.
+**Cache local Firestore** (accueil, relevés, mouvements, administration ; pas `plan.html`) : `enablePersistence({ synchronizeTabs: true })`. Les données déjà vues s'affichent tout de suite au changement de page, puis le serveur les met à jour. La fiche `users` est lue d'abord dans le cache, puis vérifiée auprès du serveur (`lireFiche`) : si le rôle a changé, la page se recharge. La déconnexion (accueil) vide le cache du poste. Dans l'Administration, le document du plan n'est chargé qu'à l'ouverture des rubriques Plan de stockage et Archives.
 
-**Navigation** : une barre de module identique sur plan, relevés et administration. À gauche, le nom du module avec son repère de couleur (plan #963E88, relevés #62B4BB, administration #D2C9B4). À droite, le bouton blanc « Accueil » (lien vers `index.html`). On ne passe d'un module à l'autre que par l'accueil.
+**Navigation** : une barre de module identique sur plan, relevés, mouvements et administration. À gauche, le nom du module avec son repère de couleur (plan #963E88, relevés #62B4BB, mouvements #7C9A6E, administration #D2C9B4). À droite, le bouton blanc « Accueil » (lien vers `index.html`). On ne passe d'un module à l'autre que par l'accueil.
 
 ## Rôles
 
-Collection `users`, un document par compte (`id` = UID Firebase Auth), champs `email`, `role`, `roleReleves`.
+Collection `users`, un document par compte (`id` = UID Firebase Auth), champs `email`, `role`, `roleReleves`, `roleMouvements`.
 
 - `role` (plan) : `none` (« Aucun accès » : tuile Plan grisée, lecture du plan refusée par les règles), `viewer` (« Consultation », par défaut si absent), `editor` (« Gestion ») ou `admin`. `canManageStock()` = editor ou admin, `isAdmin()` = admin seul.
 - `roleReleves` (relevés) : `none` (par défaut si absent), `viewer` (historique seul, lecture seule), `editor` (saisie) ou `admin` (saisie, plus les rubriques relevés et archives de l'Administration).
+- `roleMouvements` (mouvements prestation) : mêmes valeurs et même logique que `roleReleves` (`none` par défaut). L'admin du plan consulte l'historique et administre les listes, mais ne saisit pas sans rôle Gestion ou Admin mouvements.
 - **Compte sans fiche `users`** (créé dans Authentication mais pas déclaré) : refusé. Les règles lui interdisent la lecture du plan (`estConnu()`). L'accueil, les relevés et l'administration affichent « Compte non autorisé, contactez un administrateur » puis le déconnectent.
 - Seul un **admin du plan** attribue les rôles (rubrique Comptes et accès). Un compte ne peut jamais modifier le sien. Création de compte : toujours dans la console Firebase.
 - Un admin du plan a aussi accès aux rubriques relevés et archives de l'Administration, même si son `roleReleves` vaut none.
@@ -53,7 +55,7 @@ planStockage/main   { data: "<JSON du state>", updatedAt }   ← inchangé
             histoSepare: true (après le transfert : transactions doit rester vide) }
 planHistorique/{id} { type:'entree'|'sortie'|'deplacement'|'modification', date ('AAAA-MM-JJ'), responsable (e-mail), quantite, poids,
                       produit, lot, lot2, commentaire, label | fromLabel+toLabel, uid (auteur), creeLe (Timestamp serveur) }
-users/{uid}         { email, nom (facultatif), role, roleReleves }
+users/{uid}         { email, nom (facultatif), role, roleReleves, roleMouvements }
 releves/{id}        { type:'frigo'|'produit', lieu, etat:'service'|'vide'|'arret' ('' pour produit), produit, lot,
                       temp, temps:[…], hr, min, max, hrMin, hrMax, tempConforme, hrConforme (frigo), conforme,
                       statut:'conforme'|'normal'|'ecart', motif, contreMesureDe (id de l'écart d'origine ou ''),
@@ -66,6 +68,11 @@ temperatures/config { frigos:[{nom,famille:'legumes'|'alliums',hygro:bool,min,ma
 archives/{id}       { type:'releves'|'mouvements', mois:['AAAA-MM'], du, au, nb, creeLe (ISO), par (email),
                       expireLe (Timestamp ou null = illimitée), donnees (JSON en texte) }
 parametres/conservation { relArchiveApresMois (13), relConservationAns (5), planArchiveApresMois, planConservationAns (plus utilisés depuis planHistorique) }
+mouvements/{id}     { date ('AAAA-MM-JJ', chargement), prestataire, produit:'Ail'|'Oignon'|'Echalote', variete, lot (majuscules), origine,
+                      calibre, pesees:[kg…], quantite (total kg), conditionnement, responsable, commentaire,
+                      uid, creeLe (Timestamp serveur), modifications:[{le, par, raison, avant:{…}}],
+                      import:{source:'google-sheet', fichier, ligne, horodateur, le, par} (lignes importées ; id = 'gs-' + empreinte de la ligne) }
+prestation/config   { prestataires:[…], varietes:{Ail:[…],Oignon:[…],Echalote:[…]}, origines:[…], conditionnements:[…], responsables:[…] }
 ```
 
 Points importants :
@@ -73,6 +80,13 @@ Points importants :
 - **Familles** (reprises de la production) : `FAMILLES = ['Echalote','Oignon','Ail']`. Chaque produit a une famille, déduite du nom par `migrate()` si absente. Chaque calibre a zéro, une ou plusieurs familles ; sans famille, il est proposé à tous les produits. Le plan filtre les calibres selon la famille du produit. Réglage dans Administration › Plan de stockage. `majPlan` écrit `cellules`, `produits`, `calibres`, `produitFamilles` et `calibreFamilles`.
 - **Plan** : le state est stocké en texte JSON dans le champ `data`, et pas `state`. Un palox est une entrée de `lots`. `migrate()` normalise le state à chaque lecture (voir `plan.html`).
 - **Historique du plan dans `planHistorique`** (22/10/2026) : chaque action écrit le plan et sa ligne d'historique dans le **même lot** (`doSaveWithRetry`, file `txAttente`), donc tout ou rien. L'historique ne remplit plus le plan (limite Firestore de 1 Mio par document), plus besoin d'archivage. Les lignes encore dans `transactions` (avant le transfert) restent affichées avec les autres. Onglet Historique : 30 derniers jours par défaut, dates Du / Au pour remonter plus loin, bouton « Exporter en Excel ». Transfert par l'admin du plan (Administration › Plan de stockage, bouton « Transférer l'historique ») : copie par lots de 400 avec le même id, vérification ligne par ligne sur le serveur, puis transaction qui retire les seules lignes vérifiées et pose `histoSepare: true`. Après le transfert, la carte du bouton disparaît ; elle revient seule si des lignes réapparaissent dans le plan (ancienne sauvegarde réimportée). Code du transfert à retirer plus tard, quand tous les postes auront la nouvelle version. Relançable sans doublon (les règles acceptent une réécriture qui ne change que `uid` et `creeLe`). Après le transfert, une ligne écrite dans `transactions` par une ancienne version de la page est déplacée vers `planHistorique` au prochain enregistrement. Si les règles de `planHistorique` ne sont pas publiées (refus), la page enregistre la ligne dans le plan comme avant : rien n'est perdu. La sauvegarde JSON du plan ne contient plus l'historique : export Excel depuis l'onglet Historique.
+- **Mouvements prestation** (`mouvements.html`) :
+  - Saisie : reprise du formulaire E14.3 V6 (date de chargement, prestataire, produit puis variété selon le produit, lot, origine, calibre, pesées, conditionnement prévu, responsable, remarques). Choix en boutons, avec « Autre » et saisie libre. Une ligne par pesée, total calculé (« 1086 + 1097 » du formulaire). Calibres proposés : ceux du plan, filtrés par la famille du produit, si le compte peut lire le plan (`planStockage/main` est seulement lu). Responsable par défaut : dernière valeur saisie par ce compte sur le poste, sinon le nom du compte. Après enregistrement, la date, le prestataire, le produit, l'origine et le responsable restent remplis.
+  - Historique, vue **Synthèse** (par défaut) : un bloc par prestataire (total), une ligne par produit (mouvements, lots, kg, part) ; un clic sur un produit déplie le détail par lot (variétés, calibres, premier et dernier chargement, kg), un clic sur un lot ouvre la liste détaillée filtrée sur ce prestataire, ce produit et ce lot (lot exact), « Revenir à la synthèse » rétablit les filtres d'avant. Sur téléphone, la colonne Lots est masquée. Les calibres sont affichés normalisés (« 6065 » -> « 60/65 ») sans modifier les données.
+  - Historique, vue **Liste détaillée** : période (mois en cours par défaut), filtres prestataire, produit, lot ; totaux en kg par produit ; modification (raison obligatoire, tracée dans `modifications`) et suppression avec les mêmes droits que les relevés (auteur 24 h, admin à tout moment) ; export Excel de la sélection (`XlsxReleves.tableau`), en 3 onglets : Synthèse (prestataire × produit), Par lot, Mouvements.
+  - Requête par plage sur `date` (index simple). Listes absentes = listes par défaut du formulaire.
+  - Import de la Google Sheet : Administration › Mouvements prestation, fichier CSV, colonnes reconnues par leur titre, aperçu avant écriture, sans doublon (id dérivé de la ligne). Rôle mouvements Admin requis. Pesées séparées par « + », « / » ou « ; » ; calibre « 7080 » normalisé en « 70/80 » (aussi à la saisie). Testé sur l'export réel (204 lignes, juin à octobre 2026), gardé hors du dépôt.
+  - Excel : la date de chargement est une vraie date Excel (style 8, `XlsxReleves.dateExcel`).
 - **Statut d'un relevé** :
   - `conforme` : la mesure est dans la cible.
   - `normal` (« Hors cible – normal ») : hors cible, mais l'opérateur a choisi un **motif** dans la liste gérée par l'admin (dégivrage, chargement récent…). Ni action corrective ni contre-mesure : le prochain relevé se fait à la tournée suivante. Un motif commençant par « Autre » oblige à remplir les remarques.
@@ -98,6 +112,7 @@ Points importants :
 - **a) Comptes et accès** (admin du plan) : par compte, nom (facultatif), rôle plan et rôle relevés en listes déroulantes, enregistrement immédiat. Pour son propre compte, seul le nom est modifiable.
 - **b) Plan de stockage** (admin du plan) : repris **à l'identique** des anciens onglets Cellules et Comptes, version de production `021e29f` (familles des produits et des calibres comprises). Mêmes textes, même tri alphabétique, mêmes contrôles et messages (doublons, stock présent, capacité inférieure au stock). Sauvegarde manuelle par export et import JSON. Chaque modification est enregistrée immédiatement par **transaction** : relecture de `planStockage/main`, contrôles refaits sur les données fraîches, puis seuls `cellules`, `produits`, `calibres`, `produitFamilles` et `calibreFamilles` sont remplacés. Carte « Historique des mouvements » avec le bouton « Transférer l'historique », visible seulement tant qu'il reste des lignes dans `transactions` (voir « Historique du plan dans `planHistorique` »).
 - **c) Relevés de température** (admin relevés ou admin du plan) : liste des motifs « hors cible – normal », chambres (famille Légumes ou Alliums, T° mini et maxi, case Hygro puis hygrométrie mini et maxi : ces deux champs ne sont saisissables que si Hygro est coché, et décocher les efface) et produits du contrôle à cœur (mini et maxi), avec un bouton Enregistrer. Bouton « Exporter tous les relevés (JSON) » : relevés en cours et archivés (champ `archive` = id de l'archive), réglages des relevés, en un seul fichier. Bouton « Importer un fichier JSON » : restauration des relevés manquants (voir plus haut).
+- **e) Mouvements prestation** (admin mouvements ou admin du plan) : listes proposées à la saisie, présentées comme les produits du plan (onglets Prestataires, Variétés, Origines, Conditionnements, Responsables ; une ligne par valeur, tri alphabétique, renommer / supprimer / « + Nouveau », doublons refusés, dernier prestataire protégé ; chaque variété a son produit Ail / Oignon / Echalote ; enregistrement immédiat par transaction sur `prestation/config`) et import CSV de l'historique de la Google Sheet. La rubrique a) Comptes et accès a une colonne « Mouvements prestation : rôle ».
 - **d) Archives et conservation** : durées réglables pour les relevés (plus d'archivage de l'historique du plan), bouton « Archiver maintenant », liste des archives, export Excel avec graphiques (relevés) ou CSV (mouvements), et JSON. Suppression seulement après l'échéance, avec confirmation.
 
 ## Relevés (`releves.html`)
@@ -119,18 +134,21 @@ Les règles du plan (`users`, `planStockage`) sont inchangées, à deux exceptio
 - `planHistorique` : lecture comme `planStockage` ; création par Gestion ou Admin du plan (`uid` = auteur, `creeLe` = heure serveur, type connu, date sur 10 caractères) ; jamais modifiée (seule une réécriture identique, qui ne change que `uid` et `creeLe`) ; suppression par l'admin du plan.
 - `temperatures` : lecture comme `releves`, écriture par un admin relevés ou un admin du plan.
 - `archives` : lecture et création des archives de relevés par un admin relevés ou un admin du plan ; archives de mouvements réservées à l'admin du plan. Jamais modifiées. Suppression seulement si `expireLe` est dépassé.
+- `mouvements` : lecture pour roleMouvements viewer et plus, ou admin du plan. Création pour editor ou admin mouvements (`uid` = auteur, `creeLe` = heure serveur, produit dans la liste, quantité numérique). Modification des seuls champs métier et suppression : auteur pendant 24 h, ou admin mouvements / admin du plan.
+- `prestation` : lecture comme `mouvements`, écriture par un admin mouvements ou un admin du plan.
 - `parametres` : admins. Un admin relevés qui n'est pas admin du plan ne peut pas changer les durées de l'historique du plan (réglages devenus inutiles depuis `planHistorique`).
 
 ## Style / thème
 
 - Logo La Légumière (image JPEG en base64, reprise de la production) : écran de connexion de l'accueil (grand, centré) et du plan.
+- Mouvements prestation : repère vert olive (#4E6647) sur l'accueil.
 - Plan, accueil et administration : palette du logo **la légumière** (`--copper: #963E88`, vague `--wave-1`/`--wave-2`, polices Fraunces et Inter).
 - Relevés : thème bleu-vert du module (police Barlow, `--brand: #1F5C63`), avec un mode sombre.
 - Téléphone (390 px) : aucun débordement horizontal, zones tactiles d'au moins 44 px.
 
 ## Déploiement
 
-- Projet Firebase de production : `plan-de-stockage-alliums`. La configuration est dans `index.html`, `plan.html`, `releves.html` et `admin.html` (identique à celle de `ancien-plan.html`).
+- Projet Firebase de production : `plan-de-stockage-alliums`. La configuration est dans `index.html`, `plan.html`, `releves.html`, `admin.html` et `mouvements.html` (identique à celle de `ancien-plan.html`).
 - GitHub Pages publie la branche `claude/stockage-echalotes-oignons-6m4x91` : https://fabianleg29.github.io/Plan_stockage_allium/
 - Les règles `firestore.rules` sont publiées à la main dans la console Firebase.
 - Le domaine GitHub Pages (`fabianleg29.github.io`) doit figurer dans Authentication, Settings, Authorized domains.
