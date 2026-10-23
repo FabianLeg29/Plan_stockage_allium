@@ -113,9 +113,9 @@
     var g = {}; frigos.forEach(function(r){ g[jour(r.at) + '|' + r.lieu] = r; });
     var tmin = function(r, n){ return r && r.min != null ? r.min : (cfg(n).min != null ? cfg(n).min : null); };
     var tmax = function(r, n){ return r && r.max != null ? r.max : (cfg(n).max != null ? cfg(n).max : null); };
-    // statut : conforme / normal (hors cible avec motif) / ecart / arret ; anciens relevés sans statut : déduit de conforme
-    var statut = function(r){ if (r.etat === 'arret') return 'arret'; if (r.statut === 'conforme' || r.statut === 'normal' || r.statut === 'ecart') return r.statut; return r.conforme === false ? 'ecart' : 'conforme'; };
-    var LIB = { conforme: 'Conforme', normal: 'Hors cible – normal', ecart: 'Écart', arret: 'Arrêt' };
+    // statut : conforme / normal (hors cible avec motif) / ecart / arret / defaut (relevé impossible, raison dans motif) ; anciens relevés sans statut : déduit de conforme
+    var statut = function(r){ if (r.etat === 'arret') return 'arret'; if (r.etat === 'defaut') return 'defaut'; if (r.statut === 'conforme' || r.statut === 'normal' || r.statut === 'ecart') return r.statut; return r.conforme === false ? 'ecart' : 'conforme'; };
+    var LIB = { conforme: 'Conforme', normal: 'Hors cible – normal', ecart: 'Écart', arret: 'Arrêt', defaut: 'Relevé impossible' };
     var parId = {}; releves.forEach(function(r){ var id = r._id || r.id; if (id) parId[id] = r; });
     // tous les relevés frigo du jour par chambre (pour signaler un écart suivi d'une contre-mesure)
     var tous = {}; frigos.forEach(function(r){ var k = jour(r.at) + '|' + r.lieu; (tous[k] = tous[k] || []).push(r); });
@@ -133,6 +133,7 @@
         var hr = avecHr(n);
         if (!r){ row.push({ v: '', s: 2 }); if (hr) row.push({ v: '', s: 6 }); row.push({ v: '', s: 2 }); return; }
         if (r.etat === 'arret'){ row.push({ v: 'X', s: 2 }); if (hr) row.push({ v: 'X', s: 6 }); row.push({ v: 'ARRÊT' + (r.commentaire ? ' – ' + r.commentaire : ''), s: 2 }); return; }
+        if (r.etat === 'defaut'){ row.push({ v: 'X', s: 2 }); if (hr) row.push({ v: 'X', s: 6 }); row.push({ v: 'DÉFAUT : ' + (r.motif || '') + (r.commentaire ? ' – ' + r.commentaire : ''), s: 2 }); return; }
         var st = statut(r);
         var avant = (tous[j + '|' + n] || []).filter(function(x){ return x !== r && statut(x) === 'ecart'; }).map(function(x){ return 'ÉCART ' + hm(x.at) + ' (' + String(x.temp).replace('.', ',') + ' °C) : ' + (x.action || ''); });
         var rem = [r.etat === 'vide' ? 'VIDE' : '', st === 'ecart' ? 'ÉCART : ' + (r.action || '') : '', st === 'normal' ? 'HORS CIBLE NORMAL : ' + (r.motif || '') : '', avant.length ? avant.join(' ; ') + ' – contre-mesure ' + hm(r.at) : '', r.commentaire || ''].filter(Boolean).join(' – ');
@@ -145,7 +146,7 @@
     noms.forEach(function(n){ t3[0].push(n + ' T°C', n + ' cible mini', n + ' cible maxi'); });
     var series = noms.map(function(){ return { t: [], mi: [], ma: [] }; }), dates = jours.map(fr);
     jours.forEach(function(j, ji){ var row = [fr(j)];
-      noms.forEach(function(n, ni){ var r = g[j + '|' + n], v = r && r.etat !== 'arret' && r.temp != null ? r.temp : null, a = tmin(r, n), b = tmax(r, n);
+      noms.forEach(function(n, ni){ var r = g[j + '|' + n], v = r && r.etat !== 'arret' && r.etat !== 'defaut' && r.temp != null ? r.temp : null, a = tmin(r, n), b = tmax(r, n);
         row.push(v, a, b); series[ni].t.push(v); series[ni].mi.push(a); series[ni].ma.push(b); });
       t3.push(row); });
 
@@ -163,11 +164,11 @@
     var t2 = [[{ v: 'Graphiques des températures par chambre – ' + (options.periode || ''), s: 4 }], [{ v: 'Trait plein : température relevée (dernier relevé du jour). Pointillés : cibles mini (vert) et maxi (rouge). Les jours sans relevé ou à l\'arrêt sont laissés vides.', s: 0 }]];
 
     // Feuille 4 : détail de tous les relevés (frigos et contrôles à cœur)
-    var t4 = [[{ v: 'Date', s: 5 }, { v: 'Heure', s: 5 }, { v: 'Contrôle', s: 5 }, { v: 'Chambre / cellule', s: 5 }, { v: 'État', s: 5 }, { v: 'Produit', s: 5 }, { v: 'Lot', s: 5 }, { v: 'Température (°C)', s: 5 }, { v: 'Autres mesures', s: 5 }, { v: 'Cible mini', s: 5 }, { v: 'Cible maxi', s: 5 }, { v: 'Hygrométrie (%)', s: 5 }, { v: 'Résultat', s: 5 }, { v: 'Motif (hors cible normal)', s: 5 }, { v: 'Contre-mesure de', s: 5 }, { v: 'Opérateur', s: 5 }, { v: 'Action corrective', s: 5 }, { v: 'Remarques', s: 5 }, { v: 'Modifications', s: 5 }]];
+    var t4 = [[{ v: 'Date', s: 5 }, { v: 'Heure', s: 5 }, { v: 'Contrôle', s: 5 }, { v: 'Chambre / cellule', s: 5 }, { v: 'État', s: 5 }, { v: 'Produit', s: 5 }, { v: 'Lot', s: 5 }, { v: 'Température (°C)', s: 5 }, { v: 'Autres mesures', s: 5 }, { v: 'Cible mini', s: 5 }, { v: 'Cible maxi', s: 5 }, { v: 'Hygrométrie (%)', s: 5 }, { v: 'Résultat', s: 5 }, { v: 'Motif (hors cible normal) ou raison (relevé impossible)', s: 5 }, { v: 'Contre-mesure de', s: 5 }, { v: 'Opérateur', s: 5 }, { v: 'Action corrective', s: 5 }, { v: 'Remarques', s: 5 }, { v: 'Modifications', s: 5 }]];
     releves.slice().sort(function(a, b){ return a.at < b.at ? -1 : 1; }).forEach(function(r){
       var ts = r.temps && r.temps.length ? r.temps : (r.temp != null ? [r.temp] : []), st = statut(r), o = r.contreMesureDe ? parId[r.contreMesureDe] : null;
-      t4.push([fr(jour(r.at)), hm(r.at), r.type === 'frigo' ? 'Frigo' : 'À cœur', r.lieu, r.type === 'frigo' ? ({ service: 'En service', vide: 'Vide', arret: 'À l\'arrêt' }[r.etat] || '') : '', r.produit || '', r.lot || '',
-        { v: r.etat === 'arret' ? '' : r.temp, s: st === 'ecart' ? 3 : 2 }, ts.length > 1 ? ts.map(function(v){ return String(v).replace('.', ','); }).join(' / ') : '',
+      t4.push([fr(jour(r.at)), hm(r.at), r.type === 'frigo' ? 'Frigo' : 'À cœur', r.lieu, r.type === 'frigo' ? ({ service: 'En service', vide: 'Vide', arret: 'À l\'arrêt', defaut: 'En défaut / dégivrage' }[r.etat] || '') : '', r.produit || '', r.lot || '',
+        { v: r.etat === 'arret' || r.etat === 'defaut' ? '' : r.temp, s: st === 'ecart' ? 3 : 2 }, ts.length > 1 ? ts.map(function(v){ return String(v).replace('.', ','); }).join(' / ') : '',
         { v: r.min, s: 2 }, { v: r.max, s: 2 }, { v: r.hr == null ? '' : r.hr, s: 6 }, st === 'ecart' ? { v: LIB.ecart, s: 7 } : LIB[st], r.motif || '', r.contreMesureDe ? (o ? 'Écart du ' + fr(jour(o.at)) + ' ' + hm(o.at) : 'Écart précédent') : '', r.operateur || '', r.action || '', r.commentaire || '',
         (r.saisieDifferee && r.saisieDifferee.le ? ['Saisie différée le ' + fr(jour(r.saisieDifferee.le)) + ' ' + hm(r.saisieDifferee.le) + ' par ' + (r.saisieDifferee.par || '?') + ' (relevé papier)'] : [])
           .concat((r.modifications || []).map(function(m){ return fr(jour(m.le)) + ' ' + hm(m.le) + ' par ' + (m.par || '?') + ' : ' + (m.raison || ''); })).join(' ; ')]);

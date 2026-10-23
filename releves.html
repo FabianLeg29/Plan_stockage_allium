@@ -155,7 +155,10 @@ tr.ko td{background:var(--ko-bg)}
 .item .lim label{font-size:.8rem;color:var(--muted);display:block}
 .item input{min-height:44px;padding:8px}
 .item .x{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--bg);cursor:pointer;font-size:1.2rem}
-.etat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.etat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:560px){.etat{grid-template-columns:repeat(2,1fr)}}
+.etat button.def[aria-pressed="true"]{border-color:var(--nm);background:var(--nm-bg);color:var(--nm)}
+.pick span.dftxt{color:var(--nm);font-weight:700}
 .etat button{min-height:52px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-weight:600;cursor:pointer}
 .etat button[aria-pressed="true"]{border-color:var(--brand);background:var(--sel)}
 .hr{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
@@ -172,6 +175,7 @@ table.month td.c{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-s
 table.month td.c small{display:block;font-family:"Barlow",sans-serif;font-weight:500;font-size:.75rem;color:var(--muted)}
 table.month td.ko{background:var(--ko-bg);color:var(--ko)}
 table.month td.st{color:var(--muted);font-family:"Barlow",sans-serif;font-size:.8rem}
+table.month td.st.nm{color:var(--nm)}
 table.month tr.we td{background:var(--bg)}
 table.month{width:100%}
 table.month thead th{white-space:normal;min-width:64px}
@@ -296,7 +300,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
   let cleOperateur = "";
   const savedToday = new Set();
 
-  const F = { lieu:null, propose:null, etat:"service", temp:"", hr:"", choix:null, action:"", comment:"" };
+  const F = { lieu:null, propose:null, etat:"service", temp:"", hr:"", choix:null, action:"", comment:"", raison:null };
   const P = { cellule:null, produit:null, lot:"", mesures:[""], choix:null, action:"", comment:"", filtre:"" };
   const H = { mois: monthKey(new Date()), type:"all", ko:false, vue:"tableau", focus:null, chambres:null, choixOuvert:false, edit:null, ajout:null };
   // Chambres affichées dans l'historique (null = toutes) : « Toutes les chambres » à chaque arrivée sur l'onglet
@@ -414,8 +418,14 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
   // ecart : hors cible sans motif accepté (action corrective obligatoire, puis contre-mesure). Anciens relevés sans
   // champ statut : déduit de conforme. Le champ conforme vaut false uniquement pour un écart.
   const MOTIFS_DEFAUT=["Dégivrage en cours","Chargement récent (produit en descente en température)","Porte ouverte (manutention)","Chambre en remise en route","Autre (préciser en remarque)"];
-  function statutDe(d){ if(d.etat==="arret") return "arret"; if(d.statut==="conforme"||d.statut==="normal"||d.statut==="ecart") return d.statut; return d.conforme===false?"ecart":"conforme"; }
-  function libelleStatut(st){ return ({conforme:"Conforme",normal:"Hors cible – normal",ecart:"Écart",arret:"Arrêt"})[st]; }
+  // État « En défaut / dégivrage » : le relevé n'a pas pu être fait ; la raison est enregistrée dans motif (pas un écart).
+  const ETATS=[["service","En service"],["vide","Vide"],["arret","À l'arrêt"],["defaut","En défaut / dégivrage"]];
+  const RAISONS_DEFAUT=["Dégivrage en cours","Afficheur ou sonde en défaut","Groupe froid en panne","Chambre inaccessible (chargement, nettoyage)","Autre (préciser en remarque)"];
+  function sansMesure(e){ return e==="arret"||e==="defaut"; }
+  function boutonsEtat(attr,actif){ return ETATS.map(([e,l])=>'<button type="button"'+(e==="defaut"?' class="def"':'')+' data-'+attr+'="'+e+'" aria-pressed="'+(actif===e)+'">'+l+'</button>').join(""); }
+  function raisonCourte(m){ const k=String(m||"").toLowerCase(); return k.indexOf("givr")>=0?"Dégivrage":k.indexOf("sonde")>=0||k.indexOf("affich")>=0?"Sonde":k.indexOf("panne")>=0?"Panne":k.indexOf("inacc")>=0?"Inaccessible":"Autre"; }
+  function statutDe(d){ if(d.etat==="arret") return "arret"; if(d.etat==="defaut") return "defaut"; if(d.statut==="conforme"||d.statut==="normal"||d.statut==="ecart") return d.statut; return d.conforme===false?"ecart":"conforme"; }
+  function libelleStatut(st){ return ({conforme:"Conforme",normal:"Hors cible – normal",ecart:"Écart",arret:"Arrêt",defaut:"Relevé impossible"})[st]; }
   // Contrôle à cœur : relevé indicatif (température produit, pour ajuster la consigne de la chambre). Une mesure hors cible
   // est acceptée sans motif à choisir ni action corrective : statut normal avec ce motif.
   const MOTIF_COEUR="Relevé indicatif (contrôle à cœur)";
@@ -423,7 +433,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
   // Contre-mesure à faire : écart du jour qui n'a pas été suivi d'un autre relevé (même chambre ; ou même cellule, produit et lot).
   // La mesure initiale (l'écart) est enregistrée d'abord, puis la contre-mesure est un nouveau relevé rattaché par contreMesureDe.
   function cleCM(d){ return d.type==="frigo"?"f|"+d.lieu:"p|"+d.lieu+"|"+d.produit+"|"+(d.lot||""); }
-  function contreMesuresEnAttente(){ const dernier={}; for(const d of currentMonthDocs){ if(!isToday(d.at)) continue; const k=cleCM(d); if(!dernier[k]||d.at>dernier[k].at) dernier[k]=d; } return Object.values(dernier).filter(d=>statutDe(d)==="ecart").sort((a,b)=>a.at<b.at?-1:1); }
+  function contreMesuresEnAttente(){ const dernier={}; for(const d of currentMonthDocs){ if(!isToday(d.at)||d.etat==="defaut") continue; const k=cleCM(d); if(!dernier[k]||d.at>dernier[k].at) dernier[k]=d; } return Object.values(dernier).filter(d=>statutDe(d)==="ecart").sort((a,b)=>a.at<b.at?-1:1); }
   function cmPour(type,lieu,produit,lot){ return contreMesuresEnAttente().find(d=>d.type===type&&d.lieu===lieu&&(type==="frigo"||(d.produit===produit&&(d.lot||"")===(lot||"")))); }
   function cmTexte(){ return '<span class="cm">Contre-mesure à faire</span>'; }
   function cmCarte(d){ return '<div class="card cmcard" id="cmcard"><h2>Contre-mesure</h2><p class="hint" style="margin:0 0 6px">Mesure initiale enregistrée à '+hm(d.at)+' : '+(d.temps||[d.temp]).map(fmtT).join(" / ")+' °C, écart'+(d.action?' (action : '+esc(d.action)+')':'')+'.</p>'+
@@ -458,20 +468,22 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     for(const f of liste){
       const l=lastFrigo(f.nom);
       let sub;
-      if(l&&isToday(l.at)) sub='<span class="done">Fait à '+hm(l.at)+(l.etat==="arret"?" (arrêt)":l.temp!=null?" : "+fmtT(l.temp)+" °C":"")+'</span>';
+      if(l&&isToday(l.at)&&l.etat==="defaut") sub='<span class="dftxt">Non relevée à '+hm(l.at)+' : '+esc(String(l.motif||"").toLowerCase())+'</span>';
+      else if(l&&isToday(l.at)) sub='<span class="done">Fait à '+hm(l.at)+(l.etat==="arret"?" (arrêt)":l.temp!=null?" : "+fmtT(l.temp)+" °C":"")+'</span>';
       else if(savedToday.has(f.nom)) sub='<span class="done">Fait</span>';
       else sub='<span>À relever</span>';
       sub+='<span>Cible '+esc(rangeShort(fnum(f.min),fnum(f.max)))+'</span>';
       // Dernière température relevée (jour précédent ou mois précédent) quand la chambre n'est pas encore faite aujourd'hui
       if(l&&!isToday(l.at)&&!savedToday.has(f.nom)){ const st=statutDe(l);
-        sub+='<span class="der'+(st==="ecart"?" ko":st==="normal"?" nm":"")+'">Dernière : '+(l.etat==="arret"?"arrêt":l.temp!=null?fmtT(l.temp)+" °C":"–")+' le '+esc(fmtDate(l.at).replace(" "," à "))+'</span>'; }
+        sub+='<span class="der'+(st==="ecart"?" ko":st==="normal"?" nm":"")+'">Dernière : '+(l.etat==="arret"?"arrêt":l.etat==="defaut"?"non relevée ("+esc(raisonCourte(l.motif).toLowerCase())+")":l.temp!=null?fmtT(l.temp)+" °C":"–")+' le '+esc(fmtDate(l.at).replace(" "," à "))+'</span>'; }
       if(l&&isToday(l.at)&&statutDe(l)==="normal") sub+='<span class="nmtxt">Hors cible – normal</span>';
+      if(l&&isToday(l.at)&&l.etat==="defaut") sub+='<span>Vous pouvez refaire le relevé plus tard.</span>';
       const cmf=cmPour("frigo",f.nom); if(cmf) sub+=cmTexte();
       // Cadre coloré une fois la chambre relevée aujourd'hui : vert, orange (hors cible – normal), rouge (contre-mesure à faire)
       const fait=(l&&isToday(l.at))||savedToday.has(f.nom);
       const prop=!F.lieu&&F.propose===f.nom;
       if(prop) sub+='<span class="prop">Proposée ensuite</span>';
-      const cls=(fait?" fait"+(cmf?" ko":l&&isToday(l.at)&&statutDe(l)==="normal"?" nm":""):"")+(prop?" propose":"");
+      const cls=(fait?" fait"+(cmf?" ko":l&&isToday(l.at)&&(statutDe(l)==="normal"||statutDe(l)==="defaut")?" nm":""):"")+(prop?" propose":"");
       h+='<button type="button" class="pick'+cls+'" data-lieu="'+esc(f.nom)+'" aria-pressed="'+(F.lieu===f.nom)+'"><b>'+esc(f.nom)+'</b>'+sub+'</button>';
     }
       h+='</div>';
@@ -481,7 +493,9 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       const hrMin=fnum(fr.hrMin), hrMax=fnum(fr.hrMax);
       const cm=cmPour("frigo",fr.nom); if(cm) h+=cmCarte(cm);
       h+='<div class="card"><h2>État de la chambre</h2><div class="etat">'+
-        ['service','vide','arret'].map(e=>'<button type="button" data-etat="'+e+'" aria-pressed="'+(F.etat===e)+'">'+({service:"En service",vide:"Vide",arret:"À l'arrêt"})[e]+'</button>').join("")+'</div></div>';
+        boutonsEtat("etat",F.etat)+'</div></div>';
+      h+='<div class="card hidden" id="f-df"><h2>Relevé impossible : pourquoi ?</h2><p class="hint">Le relevé de température n\'a pas pu être fait. Choisissez la raison ; elle sera enregistrée à la place de la température.</p><div class="motifs">'+
+        RAISONS_DEFAUT.map((m,i)=>'<button type="button" class="pick mot" data-fraison="'+i+'" aria-pressed="'+(F.raison===m)+'">'+esc(m)+'</button>').join("")+'</div></div>';
       h+='<div id="mesures-f"><div class="card"><h2>Température</h2>'+tempBlock("tf",fnum(fr.min),fnum(fr.max),F.temp)+'<div class="status" id="tf-st"></div></div>';
       h+='<div class="card'+(fr.hygro===false?' hidden':'')+'"><label class="f" for="hrf">Hygrométrie (facultatif)</label><p class="hint">'+(fin(hrMin)||fin(hrMax)?'Cible : '+rangeTxt(hrMin,hrMax,"%")+'.':'Humidité relative affichée par l\'hygromètre.')+'</p>'+
         '<div class="hr" id="hrf-box"><input id="hrf" type="text" inputmode="decimal" autocomplete="off" placeholder="–" value="'+esc(F.hr)+'" aria-label="Hygrométrie en pourcentage"><span>%</span></div><div class="status" id="hr-st"></div></div></div>';
@@ -491,12 +505,14 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       h+='<button class="primary" type="button" id="fsave">Enregistrer le relevé</button><p class="err hidden" id="ferr"></p>';
     }
     v.innerHTML=h; bindOp();
-    v.querySelectorAll(".pick[data-lieu]").forEach(b=>b.addEventListener("click",()=>{ if(F.lieu!==b.dataset.lieu){F.temp="";F.hr="";F.choix=null;F.action="";F.comment="";F.etat="service";} F.lieu=b.dataset.lieu; F.propose=null; renderFrigo(); document.querySelector(".etat")&&document.querySelector(".etat").scrollIntoView({block:"start",behavior:"smooth"}); }));
+    v.querySelectorAll(".pick[data-lieu]").forEach(b=>b.addEventListener("click",()=>{ if(F.lieu!==b.dataset.lieu){F.temp="";F.hr="";F.choix=null;F.action="";F.comment="";F.etat="service";F.raison=null;} F.lieu=b.dataset.lieu; F.propose=null; renderFrigo(); document.querySelector(".etat")&&document.querySelector(".etat").scrollIntoView({block:"start",behavior:"smooth"}); }));
     if(!fr) return;
     const min=fnum(fr.min), max=fnum(fr.max), hrMin=fnum(fr.hrMin), hrMax=fnum(fr.hrMax);
     const update=()=>{
-      const arret=F.etat==="arret";
+      const arret=sansMesure(F.etat), defaut=F.etat==="defaut";
       document.getElementById("mesures-f").classList.toggle("hidden",arret);
+      document.getElementById("f-df").classList.toggle("hidden",!defaut);
+      document.getElementById("fsave").textContent=defaut?"Enregistrer : relevé impossible":"Enregistrer le relevé";
       const ok=paintTemp("tf",min,max), st=document.getElementById("tf-st");
       st.className="status"+(ok===true?" ok":ok===false?" ko":""); st.textContent=ok===true?"Température conforme":ok===false?"Température hors cible":"";
       const hv=parseHr(F.hr), hok=inRange(hv,hrMin,hrMax), hb=document.getElementById("hrf-box"), hs=document.getElementById("hr-st");
@@ -512,6 +528,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     bindSteps();
     v.querySelectorAll("[data-etat]").forEach(b=>b.addEventListener("click",()=>{ F.etat=b.dataset.etat; v.querySelectorAll("[data-etat]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); update(); }));
     lierHorsCible("f",F,update);
+    v.querySelectorAll("[data-fraison]").forEach(b=>b.addEventListener("click",()=>{ F.raison=RAISONS_DEFAUT[+b.dataset.fraison]; v.querySelectorAll("[data-fraison]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); }));
     const pt=document.getElementById("cmplustard"); if(pt) pt.addEventListener("click",()=>{ allerSuivante(fr.nom); renderFrigo(); montrerListe(); });
     document.getElementById("fa").addEventListener("input",e=>F.action=e.target.value);
     document.getElementById("fc").addEventListener("input",e=>F.comment=e.target.value);
@@ -526,7 +543,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     const idx=liste.findIndex(f=>f.nom===nom);
     const order=liste.slice(idx+1).concat(liste.slice(0,idx));
     const next=order.find(f=>!doneToday(f.nom));
-    F.temp=""; F.hr=""; F.choix=null; F.action=""; F.comment=""; F.etat="service"; F.lieu=null; F.propose=next?next.nom:null;
+    F.temp=""; F.hr=""; F.choix=null; F.action=""; F.comment=""; F.etat="service"; F.raison=null; F.lieu=null; F.propose=next?next.nom:null;
     return next;
   }
   function montrerListe(){
@@ -535,14 +552,35 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
   }
   // garde l'écart qui vient d'être enregistré dans la liste du jour, même avant le retour de Firestore
   function memoriser(id,doc){ if(!currentMonthDocs.some(x=>x._id===id)) currentMonthDocs.unshift(Object.assign({_id:id},doc)); }
+  // Relevé impossible (en défaut / dégivrage) : pas de température, la raison dans motif ; jamais un écart
+  async function saveDefaut(fr,show,btn){
+    if(!F.raison) return show("Choisissez pourquoi le relevé n'a pas pu être fait.");
+    if(estAutre(F.raison)&&!F.comment.trim()) return show("Raison « Autre » : précisez-la dans les remarques.");
+    const now=new Date(), min=fnum(fr.min), max=fnum(fr.max), hrMin=fnum(fr.hrMin), hrMax=fnum(fr.hrMax);
+    const doc={ type:"frigo", lieu:fr.nom, etat:"defaut", produit:"", lot:"", temp:null, temps:[], hr:null,
+      min:fin(min)?min:null, max:fin(max)?max:null, hrMin:fin(hrMin)?hrMin:null, hrMax:fin(hrMax)?hrMax:null,
+      tempConforme:true, hrConforme:true, conforme:true, statut:"defaut", motif:F.raison, contreMesureDe:"",
+      action:"", commentaire:F.comment.trim(), operateur:operateur.trim(), at:now.toISOString(), mois:monthKey(now), ...auteur() };
+    btn.disabled=true;
+    try{
+      const ref=RELEVES.doc();
+      await withRetry(()=>ref.set(doc));
+      memoriser(ref.id,doc);
+      savedToday.add(fr.nom);
+      const next=allerSuivante(fr.nom);
+      toast("Relevé impossible enregistré ("+fr.nom+")"+(next?" – proposée ensuite : "+next.nom:" – tournée terminée"));
+      renderFrigo(); montrerListe();
+    }catch(e){ show(errMsg(e)); btn.disabled=false; }
+  }
   async function saveFrigo(fr){
     const err=document.getElementById("ferr"), btn=document.getElementById("fsave");
     const show=m=>{err.textContent=m;err.classList.remove("hidden");};
     err.classList.add("hidden");
     const min=fnum(fr.min), max=fnum(fr.max), hrMin=fnum(fr.hrMin), hrMax=fnum(fr.hrMax);
-    const arret=F.etat==="arret";
+    const arret=sansMesure(F.etat);
     const t=num(F.temp), hrTxt=String(F.hr).trim(), hv=parseHr(F.hr);
     if(!operateur.trim()) return show("Indiquez le nom de l'opérateur.");
+    if(F.etat==="defaut") return saveDefaut(fr,show,btn);
     if(!arret&&!fin(t)) return show("Saisissez la température relevée.");
     if(!arret&&hrTxt&&(!fin(hv)||hv<0||hv>100)) return show("L'hygrométrie doit être un pourcentage entre 0 et 100.");
     const tOk=arret?null:inRange(t,min,max);
@@ -569,7 +607,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       savedToday.add(fr.nom);
       if(statut==="ecart"){
         // Mesure initiale enregistrée : on reste sur la chambre pour saisir la contre-mesure
-        F.temp=""; F.hr=""; F.choix=null; F.action=""; F.comment=""; F.etat="service";
+        F.temp=""; F.hr=""; F.choix=null; F.action=""; F.comment=""; F.etat="service"; F.raison=null;
         toast("Écart enregistré. Saisissez maintenant la contre-mesure.");
         renderFrigo(); const c=document.getElementById("cmcard"); if(c) c.scrollIntoView({block:"start"});
         return;
@@ -749,8 +787,8 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     const errLecture=courant?curErr:histErr;
     if(errLecture){ document.getElementById("hsum").textContent=monthLabel(H.mois)+" :"; tabEl.innerHTML='<p class="empty">'+esc(errLecture)+'</p>'; return; }
     if(H.chambres&&!H.chambres.length){ document.getElementById("hsum").textContent=monthLabel(H.mois)+" :"; tabEl.innerHTML='<p class="empty">Aucune chambre sélectionnée : cochez au moins une chambre.</p>'; return; }
-    const all=histVisible(), ko=all.filter(d=>statutDe(d)==="ecart").length, nm=all.filter(d=>statutDe(d)==="normal").length;
-    document.getElementById("hsum").textContent=monthLabel(H.mois)+" : "+all.length+" contrôle"+(all.length>1?"s":"")+", dont "+ko+" écart"+(ko>1?"s":"")+(nm?" et "+nm+" hors cible normal"+(nm>1?"s":""):"")+".";
+    const all=histVisible(), ko=all.filter(d=>statutDe(d)==="ecart").length, nm=all.filter(d=>statutDe(d)==="normal").length, df=all.filter(d=>statutDe(d)==="defaut").length;
+    document.getElementById("hsum").textContent=monthLabel(H.mois)+" : "+all.length+" contrôle"+(all.length>1?"s":"")+", dont "+ko+" écart"+(ko>1?"s":"")+(nm?" et "+nm+" hors cible normal"+(nm>1?"s":""):"")+(df?", "+df+" relevé"+(df>1?"s":"")+" impossible"+(df>1?"s":""):"")+".";
     if(!all.length){
       chercherArchive(H.mois);
       const arch=archInfo[H.mois];
@@ -765,11 +803,11 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     // (ordinateur) ; sur téléphone, chaque relevé devient une fiche (voir CSS table.liste).
     tabEl.innerHTML='<table class="liste"><thead><tr><th>Date</th><th>Chambre / produit</th><th>T° (°C)</th><th>Résultat</th><th>Opérateur</th><th>Action / remarques</th>'+(gestion?'<th class="acts"></th>':'')+'</tr></thead><tbody>'+
       rows.map(d=>{ const st=statutDe(d), orig=d.contreMesureDe?all.find(x=>x._id===d.contreMesureDe):null, rem=esc(d.action)+(d.commentaire?(d.action?'<br>':'')+'<span class="hint">'+esc(d.commentaire)+'</span>':'')+derniereModif(d);
-        return '<tr id="r-'+esc(d._id)+'" class="'+(st==="ecart"?"ko":st==="normal"?"nm":"")+(H.focus&&d._id===H.focus?" focus":"")+'">'+
+        return '<tr id="r-'+esc(d._id)+'" class="'+(st==="ecart"?"ko":st==="normal"||st==="defaut"?"nm":"")+(H.focus&&d._id===H.focus?" focus":"")+'">'+
         '<td class="dt">'+fmtDate(d.at)+'<br><span class="hint">'+(d.type==="frigo"?"Frigo":"À cœur")+'</span>'+(d.saisieDifferee?'<br><span class="hint modif">Saisi le '+fmtDate(d.saisieDifferee.le)+'</span>':'')+'</td>'+
         '<td class="lieu"><b>'+esc(d.lieu)+'</b>'+(d.produit?'<br>'+esc(d.produit):'')+(d.lot?'<br><span class="hint">Lot '+esc(d.lot)+'</span>':'')+'</td>'+
-        '<td class="t">'+(d.etat==="arret"?"–":(d.temps||[d.temp]).map(fmtT).join(" / "))+(d.hr!=null?'<br><span class="hint">'+fmtH(d.hr)+'</span>':'')+'</td>'+
-        '<td><span class="tag '+(st==="ecart"?"ko":st==="normal"?"nm":"ok")+'">'+libelleStatut(st)+'</span>'+(d.motif?'<br><span class="hint">'+esc(d.motif)+'</span>':'')+(d.contreMesureDe?'<br><span class="hint">Contre-mesure'+(orig?' de l\'écart de '+hm(orig.at):'')+'</span>':'')+(d.etat==="vide"?'<br><span class="hint">Chambre vide</span>':'')+'</td>'+
+        '<td class="t">'+(sansMesure(d.etat)?"–":(d.temps||[d.temp]).map(fmtT).join(" / "))+(d.hr!=null?'<br><span class="hint">'+fmtH(d.hr)+'</span>':'')+'</td>'+
+        '<td><span class="tag '+(st==="ecart"?"ko":st==="normal"||st==="defaut"?"nm":"ok")+'">'+libelleStatut(st)+'</span>'+(d.motif?'<br><span class="hint">'+esc(d.motif)+'</span>':'')+(d.contreMesureDe?'<br><span class="hint">Contre-mesure'+(orig?' de l\'écart de '+hm(orig.at):'')+'</span>':'')+(d.etat==="vide"?'<br><span class="hint">Chambre vide</span>':'')+'</td>'+
         '<td data-l="Opérateur">'+esc(d.operateur)+'</td>'+
         '<td class="rem"'+(rem?' data-l="Action / remarques"':'')+'>'+rem+'</td>'+
         (gestion?'<td class="acts">'+(peutGerer(d)?'<button type="button" class="mini" data-hmod="'+esc(d._id)+'">Modifier</button><button type="button" class="mini del" data-hdel="'+esc(d._id)+'">Supprimer</button>':'')+'</td>':'')+
@@ -792,7 +830,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
   }
   async function supprimerReleve(d){
     if(!d) return;
-    const t=d.etat==="arret"?"arrêt":(d.temps||[d.temp]).map(fmtT).join(" / ")+" °C";
+    const t=d.etat==="arret"?"arrêt":d.etat==="defaut"?"relevé impossible":(d.temps||[d.temp]).map(fmtT).join(" / ")+" °C";
     if(!confirm("Supprimer définitivement ce relevé ?\n\n"+fmtDate(d.at)+" – "+d.lieu+(d.produit?" – "+d.produit:"")+" – "+t+"\n\nCette action est irréversible.")) return;
     try{ await RELEVES.doc(d._id).delete(); toast("Relevé supprimé"); }
     catch(e){ toast(e&&e.code==="permission-denied"?"Suppression refusée : vos droits ne le permettent pas (relevé de plus de 24 h ou d'un autre opérateur).":"Suppression impossible ("+(e.code||"erreur")+")"); }
@@ -802,9 +840,11 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     const frigo=d.type==="frigo", st=statutDe(d), motifs=config.motifs.slice();
     const chD=config.frigos.find(f=>f.nom===d.lieu), avecHygro=!chD||chD.hygro!==false||d.hr!=null;
     if(d.motif&&motifs.indexOf(d.motif)<0) motifs.push(d.motif);
-    const E={ etat:d.etat||"service", choix:st==="ecart"?"ecart":st==="normal"?d.motif:"" };
+    const E={ etat:d.etat||"service", choix:st==="ecart"?"ecart":st==="normal"?d.motif:"", raison:st==="defaut"?d.motif:"" };
+    const raisons=RAISONS_DEFAUT.slice(); if(E.raison&&raisons.indexOf(E.raison)<0) raisons.push(E.raison);
     el.innerHTML='<div class="edit"><h2>Modifier le relevé</h2><p class="hint">'+fmtDate(d.at)+' – '+(frigo?"Frigo":"À cœur")+' – '+esc(d.lieu)+(d.produit?' – '+esc(d.produit):'')+' – opérateur : '+esc(d.operateur)+'. Cible : '+rangeTxt(fnum(d.min),fnum(d.max))+'.</p>'+
-      (frigo?'<label class="f">État</label><div class="etat" style="margin-bottom:12px">'+['service','vide','arret'].map(e=>'<button type="button" data-eetat="'+e+'" aria-pressed="'+(E.etat===e)+'">'+({service:"En service",vide:"Vide",arret:"À l'arrêt"})[e]+'</button>').join("")+'</div>':'')+
+      (frigo?'<label class="f">État</label><div class="etat" style="margin-bottom:12px">'+boutonsEtat("eetat",E.etat)+'</div>'+
+        '<div id="e-df" class="hidden" style="margin-bottom:10px"><label class="f" for="edf">Relevé impossible : raison</label><select id="edf"><option value="">— Choisir —</option>'+raisons.map((m,i)=>'<option value="'+i+'"'+(E.raison===m?" selected":"")+'>'+esc(m)+'</option>').join("")+'</select></div>':'')+
       '<div id="e-mes"><label class="f" for="et">'+(frigo?'Température (°C)':'Températures à cœur (°C), séparées par « / »')+'</label><input id="et" type="text" inputmode="decimal" value="'+esc((d.temps&&d.temps.length?d.temps:(d.temp!=null?[d.temp]:[])).map(fmtT).join(" / "))+'">'+
       (frigo?'<label class="f'+(avecHygro?'':' hidden')+'" for="eh" style="margin-top:10px">Hygrométrie (%), facultatif</label><input id="eh" class="'+(avecHygro?'':'hidden')+'" type="text" inputmode="decimal" value="'+esc(d.hr!=null?String(d.hr).replace(".",","):"")+'">':'')+'</div>'+
       (!frigo?'<label class="f" for="el" style="margin-top:10px">N° de lot ou commande</label><input id="el" type="text" value="'+esc(d.lot||"")+'">':'')+
@@ -816,7 +856,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       (Array.isArray(d.modifications)&&d.modifications.length?'<p class="hint" style="margin-top:10px">Modifications précédentes : '+d.modifications.map(m=>fmtDate(m.le)+' par '+esc(m.par)+' ('+esc(m.raison)+')').join(" ; ")+'</p>':'')+'</div>';
     const g=id=>document.getElementById(id);
     const lire=()=>{
-      const arret=frigo&&E.etat==="arret";
+      const arret=frigo&&sansMesure(E.etat);
       const temps=arret?[]:String(g("et").value).split("/").map(x=>num(x));
       const hrTxt=frigo?String(g("eh").value).trim():"", hv=parseHr(hrTxt);
       const tOk=arret?null:(temps.every(fin)&&temps.length?temps.every(t=>inRange(t,fnum(d.min),fnum(d.max))!==false):null);
@@ -824,9 +864,9 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       return { arret, temps, hrTxt, hv, tOk, hOk, horsCible:!arret&&(tOk===false||hOk===false) };
     };
     // Contrôle à cœur : pas de motif ni d'action corrective (relevé indicatif)
-    const maj=()=>{ const L=lire(); g("e-mes").classList.toggle("hidden",L.arret); g("e-hc").classList.toggle("hidden",!frigo||!L.horsCible); g("e-act").classList.toggle("hidden",!(frigo&&L.horsCible&&E.choix==="ecart")); };
+    const maj=()=>{ const L=lire(); g("e-mes").classList.toggle("hidden",L.arret); if(frigo) g("e-df").classList.toggle("hidden",E.etat!=="defaut"); g("e-hc").classList.toggle("hidden",!frigo||!L.horsCible); g("e-act").classList.toggle("hidden",!(frigo&&L.horsCible&&E.choix==="ecart")); };
     el.querySelectorAll("[data-eetat]").forEach(b=>b.addEventListener("click",()=>{ E.etat=b.dataset.eetat; el.querySelectorAll("[data-eetat]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); maj(); }));
-    g("et").addEventListener("input",maj); if(frigo) g("eh").addEventListener("input",maj);
+    g("et").addEventListener("input",maj); if(frigo){ g("eh").addEventListener("input",maj); g("edf").addEventListener("change",e=>{ E.raison=e.target.value===""?"":raisons[+e.target.value]; }); }
     g("ech").addEventListener("change",e=>{ const v=e.target.value; E.choix=v==="ecart"?"ecart":v?motifs[+v.slice(1)]:""; maj(); });
     g("ecancel").addEventListener("click",()=>{ H.edit=null; drawHist(); });
     g("esave").addEventListener("click",async()=>{
@@ -835,7 +875,10 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       if(!L.arret&&(!L.temps.length||!L.temps.every(fin))) return show(frigo?"Saisissez la température.":"Saisissez chaque température à cœur, séparées par « / ».");
       if(frigo&&!L.arret&&L.hrTxt&&(!fin(L.hv)||L.hv<0||L.hv>100)) return show("L'hygrométrie doit être un pourcentage entre 0 et 100.");
       if(frigo&&L.horsCible&&!E.choix) return show("Mesure hors cible : choisissez le motif, ou « Écart ».");
-      const statut=!L.horsCible?"conforme":(!frigo?"normal":E.choix==="ecart"?"ecart":"normal"), motif=statut!=="normal"?"":frigo?E.choix:MOTIF_COEUR;
+      const defaut=frigo&&E.etat==="defaut";
+      if(defaut&&!E.raison) return show("Choisissez pourquoi le relevé n'a pas pu être fait.");
+      if(defaut&&estAutre(E.raison)&&!commentaire) return show("Raison « Autre » : précisez-la dans les remarques.");
+      const statut=defaut?"defaut":!L.horsCible?"conforme":(!frigo?"normal":E.choix==="ecart"?"ecart":"normal"), motif=defaut?E.raison:statut!=="normal"?"":frigo?E.choix:MOTIF_COEUR;
       if(statut==="ecart"&&!action) return show("Décrivez l'action corrective.");
       if(statut==="normal"&&estAutre(motif)&&!commentaire) return show("Motif « Autre » : précisez-le dans les remarques.");
       if(!raison) return show("Indiquez la raison de la modification.");
@@ -866,13 +909,14 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
           h+=peutSaisirLe(jr)?'<td data-add="'+jr+'" data-ch="'+esc(n)+'" tabindex="0" role="button" aria-label="'+esc(n)+', '+dt.toLocaleDateString("fr-FR")+' : saisir un relevé oublié" title="Saisir un relevé oublié"></td>':'<td></td>'; continue; }
         const ra=' data-rid="'+esc(r._id)+'" data-ch="'+esc(n)+'" tabindex="0" role="button" aria-label="'+esc(n)+', '+dt.toLocaleDateString("fr-FR")+' : voir le détail"';
         if(r.etat==="arret"){ h+='<td class="st"'+ra+' title="'+esc(r.operateur)+'">Arrêt</td>'; continue; }
+        if(r.etat==="defaut"){ h+='<td class="st nm"'+ra+' title="'+esc(hm(r.at)+" – "+r.operateur+" – Relevé impossible : "+(r.motif||"")+(r.commentaire?" – "+r.commentaire:""))+'">Défaut<small>'+esc(raisonCourte(r.motif))+'</small></td>'; continue; }
         const st=statutDe(r), nb=g[d+"|"+n+"|n"]||1;
         const tip=hm(r.at)+" – "+r.operateur+(r.motif?" – Hors cible normal : "+r.motif:"")+(r.commentaire?" – "+r.commentaire:"")+(r.action?" – Action : "+r.action:"");
         h+='<td class="c'+(st==="ecart"?" ko":st==="normal"?" nm":"")+'"'+ra+' title="'+esc(tip)+'">'+fmtT(r.temp)+(r.hr!=null?'<small>'+fmtH(r.hr)+'</small>':'')+(r.etat==="vide"?'<small>Vide</small>':'')+(st==="normal"?'<small>Normal</small>':'')+(nb>1?'<small>'+nb+' mesures'+(g[d+"|"+n+"|e"]&&st!=="ecart"?', écart':'')+'</small>':'')+'</td>';
       }
       h+='</tr>';
     }
-    el.innerHTML=h+'</tbody></table><p class="hint" style="margin-top:8px">Touchez une case pour ouvrir le relevé dans la liste détaillée. Rouge : écart. Orange : hors cible – normal (motif). Quand il y a plusieurs mesures dans la journée, la case montre la dernière.'+(roleReleves==="editor"||roleReleves==="admin"?' Case vide : cliquez pour saisir un relevé oublié (relevé papier'+(roleReleves==="admin"?'':', '+JOURS_DIFFERE+' jours en arrière au plus')+').':'')+'</p>';
+    el.innerHTML=h+'</tbody></table><p class="hint" style="margin-top:8px">Touchez une case pour ouvrir le relevé dans la liste détaillée. Rouge : écart. Orange : hors cible – normal (motif), ou relevé impossible (défaut). Quand il y a plusieurs mesures dans la journée, la case montre la dernière.'+(roleReleves==="editor"||roleReleves==="admin"?' Case vide : cliquez pour saisir un relevé oublié (relevé papier'+(roleReleves==="admin"?'':', '+JOURS_DIFFERE+' jours en arrière au plus')+').':'')+'</p>';
     el.querySelectorAll("td[data-rid]").forEach(td=>{
       // ouvre la liste détaillée filtrée sur cette chambre (sans changer le choix mémorisé), ligne mise en évidence
       const go=()=>{ if(H.retourChambres===undefined) H.retourChambres=H.chambres; H.chambres=[td.dataset.ch]; H.focus=td.dataset.rid; H.vue="liste"; H.type="all"; H.ko=false; renderHist(); };
@@ -892,11 +936,12 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     if(!fr||!peutSaisirLe(A.jour)){ H.ajout=null; return drawHist(); }
     const min=fnum(fr.min), max=fnum(fr.max), hrMin=fnum(fr.hrMin), hrMax=fnum(fr.hrMax), avecHygro=fr.hygro!==false;
     const jourTxt=new Date(A.jour+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
-    const E={ etat:"service", choix:"" }, motifs=config.motifs.slice();
+    const E={ etat:"service", choix:"", raison:"" }, motifs=config.motifs.slice();
     el.innerHTML='<div class="edit"><h2>Relevé oublié – '+esc(fr.nom)+' – '+esc(jourTxt)+'</h2><p class="hint">Relevé fait sur papier ou par une personne sans l\'application. Indiquez l\'heure réelle du relevé et la personne qui l\'a fait. La date et l\'heure de la saisie sont enregistrées automatiquement. Cible : '+rangeTxt(min,max)+(avecHygro&&(fin(hrMin)||fin(hrMax))?' ; hygrométrie '+rangeTxt(hrMin,hrMax,"%"):'')+'.</p>'+
       '<label class="f" for="ah">Heure du relevé</label><input id="ah" type="time" required style="max-width:200px">'+
       '<label class="f" for="ao" style="margin-top:10px">Opérateur (personne qui a fait le relevé)</label><input id="ao" type="text" autocomplete="off" placeholder="Nom">'+
-      '<label class="f" style="margin-top:10px">État</label><div class="etat" style="margin-bottom:12px">'+['service','vide','arret'].map(e=>'<button type="button" data-aetat="'+e+'" aria-pressed="'+(E.etat===e)+'">'+({service:"En service",vide:"Vide",arret:"À l'arrêt"})[e]+'</button>').join("")+'</div>'+
+      '<label class="f" style="margin-top:10px">État</label><div class="etat" style="margin-bottom:12px">'+boutonsEtat("aetat",E.etat)+'</div>'+
+      '<div id="a-df" class="hidden" style="margin-bottom:10px"><label class="f" for="adf">Relevé impossible : raison</label><select id="adf"><option value="">— Choisir —</option>'+RAISONS_DEFAUT.map((m,i)=>'<option value="'+i+'">'+esc(m)+'</option>').join("")+'</select></div>'+
       '<div id="a-mes"><label class="f" for="at">Température (°C)</label><input id="at" type="text" inputmode="decimal" autocomplete="off">'+
       (avecHygro?'<label class="f" for="ahr" style="margin-top:10px">Hygrométrie (%), facultatif</label><input id="ahr" type="text" inputmode="decimal" autocomplete="off">':'')+'</div>'+
       '<p class="status" id="a-st"></p>'+
@@ -906,16 +951,17 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       '<div class="edit-bts"><button type="button" class="primary" id="asave">Enregistrer le relevé</button><button type="button" class="secondary" id="acancel">Annuler</button></div><p class="err hidden" id="aerr"></p></div>';
     const g=id=>document.getElementById(id);
     const lire=()=>{
-      const arret=E.etat==="arret", t=num(g("at").value), hrTxt=avecHygro?String(g("ahr").value).trim():"", hv=parseHr(hrTxt);
+      const arret=sansMesure(E.etat), t=num(g("at").value), hrTxt=avecHygro?String(g("ahr").value).trim():"", hv=parseHr(hrTxt);
       const tOk=arret?null:inRange(t,min,max), hOk=arret||!hrTxt?null:inRange(hv,hrMin,hrMax);
       return { arret, t, hrTxt, hv, tOk, hOk, horsCible:!arret&&(tOk===false||hOk===false) };
     };
     const maj=()=>{ const L=lire(), st=g("a-st");
-      g("a-mes").classList.toggle("hidden",L.arret);
+      g("a-mes").classList.toggle("hidden",L.arret); g("a-df").classList.toggle("hidden",E.etat!=="defaut");
       st.className="status"+(L.horsCible?" ko":L.tOk===true?" ok":""); st.textContent=L.horsCible?"Mesure hors cible":L.tOk===true?"Mesure conforme":"";
       g("a-hc").classList.toggle("hidden",!L.horsCible); g("a-act").classList.toggle("hidden",!(L.horsCible&&E.choix==="ecart")); };
     el.querySelectorAll("[data-aetat]").forEach(b=>b.addEventListener("click",()=>{ E.etat=b.dataset.aetat; el.querySelectorAll("[data-aetat]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); maj(); }));
     g("at").addEventListener("input",maj); if(avecHygro) g("ahr").addEventListener("input",maj);
+    g("adf").addEventListener("change",e=>{ E.raison=e.target.value===""?"":RAISONS_DEFAUT[+e.target.value]; });
     g("ach").addEventListener("change",e=>{ const v=e.target.value; E.choix=v==="ecart"?"ecart":v?motifs[+v.slice(1)]:""; maj(); });
     g("acancel").addEventListener("click",()=>{ H.ajout=null; drawHist(); });
     g("asave").addEventListener("click",async()=>{
@@ -928,7 +974,10 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       if(!L.arret&&!fin(L.t)) return show("Saisissez la température relevée.");
       if(!L.arret&&L.hrTxt&&(!fin(L.hv)||L.hv<0||L.hv>100)) return show("L'hygrométrie doit être un pourcentage entre 0 et 100.");
       if(L.horsCible&&!E.choix) return show("Mesure hors cible : choisissez le motif, ou « Écart ».");
-      const statut=!L.horsCible?"conforme":(E.choix==="ecart"?"ecart":"normal"), motif=statut==="normal"?E.choix:"";
+      const defaut=E.etat==="defaut";
+      if(defaut&&!E.raison) return show("Choisissez pourquoi le relevé n'a pas pu être fait.");
+      if(defaut&&estAutre(E.raison)&&!commentaire) return show("Raison « Autre » : précisez-la dans les remarques.");
+      const statut=defaut?"defaut":!L.horsCible?"conforme":(E.choix==="ecart"?"ecart":"normal"), motif=defaut?E.raison:statut==="normal"?E.choix:"";
       if(statut==="ecart"&&!action) return show("Décrivez l'action corrective.");
       if(statut==="normal"&&estAutre(motif)&&!commentaire) return show("Motif « Autre » : précisez-le dans les remarques.");
       const deja=histSource().find(d=>d.type==="frigo"&&d.lieu===fr.nom&&new Date(d.at).toDateString()===quand.toDateString());
