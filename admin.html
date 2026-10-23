@@ -327,6 +327,9 @@ label.adm-sec{display:inline-flex;align-items:center}
   function hygroParDefaut(nom){ var k = String(nom || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); return SANS_HYGRO.indexOf(k) < 0; }
   function avecFamille(l){ return l.map(function(f){ return Object.assign({}, f, { hygro: typeof f.hygro === 'boolean' ? f.hygro : hygroParDefaut(f.nom), famille: f.famille === 'legumes' || f.famille === 'alliums' ? f.famille : familleParDefaut(f.nom) }); }); }
   // Motifs « hors cible – normal » proposés aux opérateurs
+  // Raisons proposées quand le relevé est impossible (état « En défaut / dégivrage » dans releves.html) : même liste par défaut
+  var RAISONS_DEFAUT = ['Dégivrage en cours', 'Afficheur ou sonde en défaut', 'Groupe froid en panne', 'Chambre inaccessible (chargement, nettoyage)', 'Autre (préciser en remarque)'];
+  function raisonsDe(d){ return d && Array.isArray(d.raisonsDefaut) && d.raisonsDefaut.length ? d.raisonsDefaut.slice() : RAISONS_DEFAUT.slice(); }
   var MOTIFS_DEFAUT = ['Dégivrage en cours', 'Chargement récent (produit en descente en température)', 'Porte ouverte (manutention)', 'Chambre en remise en route', 'Autre (préciser en remarque)'];
   // Chambres de la fiche STOC E12.1, utilisées pour initialiser temperatures/config s'il n'existe pas
   const CHAMBRES_STOC = [['LP1',3,5],['LP2',6,12],['LP3',3,6],['LBP',2,4],['Zone prépa',6,14],
@@ -1071,6 +1074,12 @@ label.adm-sec{display:inline-flex;align-items:center}
       h += '<div class="adm-row"><label class="sr" for="mot' + i + '">Motif ' + (i + 1) + '</label><input id="mot' + i + '" type="text" data-rmot="' + i + '" value="' + esc(m) + '"><button type="button" class="adm-del" data-rmotdel="' + i + '">Supprimer</button></div>';
     });
     h += '<button type="button" class="adm-link" id="admMotAdd">+ Ajouter un motif</button></section>';
+    if (!Array.isArray(r.raisonsDefaut)) r.raisonsDefaut = RAISONS_DEFAUT.slice();
+    h += '<section class="adm-card" id="admRaisons"><h2>Raisons « relevé impossible »</h2><p class="adm-muted">Quand l\'opérateur choisit l\'état « En défaut / dégivrage », le relevé de température n\'est pas fait : il choisit une de ces raisons, enregistrée à la place de la température (jamais un écart). Une raison commençant par « Autre » oblige à préciser en remarque. Les relevés déjà enregistrés ne sont pas modifiés.</p>';
+    r.raisonsDefaut.forEach(function(m, i){
+      h += '<div class="adm-row"><label class="sr" for="rais' + i + '">Raison ' + (i + 1) + '</label><input id="rais' + i + '" type="text" data-rrais="' + i + '" value="' + esc(m) + '"><button type="button" class="adm-del" data-rraisdel="' + i + '">Supprimer</button></div>';
+    });
+    h += '<button type="button" class="adm-link" id="admRaisAdd">+ Ajouter une raison</button></section>';
     h += '<div class="adm-actions"><button type="button" class="adm-save" id="admSaveRel">Enregistrer les réglages des relevés</button>' + (relDirty ? '<button type="button" class="adm-sec" id="admCancelRel">Annuler les modifications</button>' : '') + '</div>' +
       '<p class="adm-muted">Enregistré dans temperatures/config. Le plan de stockage n\'est pas concerné.</p>';
     h += '<section class="adm-card"><h2>Export et import des relevés (JSON)</h2><p class="adm-muted">Export : un seul fichier avec tous les relevés (en cours et archivés), les chambres, les produits et les motifs, pour les réintégrer ailleurs ou les restaurer ici. Rangez-le dans un dossier partagé sauvegardé, jamais dans GitHub.</p>' +
@@ -1105,6 +1114,9 @@ label.adm-sec{display:inline-flex;align-items:center}
     on('[data-rmot]', 'input', function(e){ R.motifs[+e.dataset.rmot] = e.value; relDirty = true; });
     on('[data-rmotdel]', 'click', function(e){ R.motifs.splice(+e.dataset.rmotdel, 1); relDirty = true; draw(); });
     on('#admMotAdd', 'click', function(){ R.motifs.push(''); relDirty = true; draw(); var ins = o.querySelectorAll('[data-rmot]'); if (ins.length) ins[ins.length - 1].focus(); });
+    on('[data-rrais]', 'input', function(e){ R.raisonsDefaut[+e.dataset.rrais] = e.value; relDirty = true; });
+    on('[data-rraisdel]', 'click', function(e){ R.raisonsDefaut.splice(+e.dataset.rraisdel, 1); relDirty = true; draw(); });
+    on('#admRaisAdd', 'click', function(){ R.raisonsDefaut.push(''); relDirty = true; draw(); var ins = o.querySelectorAll('[data-rrais]'); if (ins.length) ins[ins.length - 1].focus(); });
     on('#admRpAdd', 'click', function(){ R.produits.push({ nom: '', min: null, max: null }); relDirty = true; draw(); var ins = o.querySelectorAll('[data-rp$="|nom"]'); if (ins.length) ins[ins.length - 1].focus(); });
     on('#admRelJson', 'click', async function(btn){
       btn.disabled = true; A.err = ''; A.msg = '';
@@ -1126,7 +1138,7 @@ label.adm-sec{display:inline-flex;align-items:center}
     on('#admRelImpGo', 'click', function(btn){ btn.disabled = true; restaurer(); });
     on('#admCancelRel', 'click', function(){ relDraft = clone(relConfig); relDirty = false; A.msg = ''; A.err = ''; draw(); });
     on('#admSaveRel', 'click', async function(btn){
-      var out = { frigos: [], produits: [], motifs: [] }, noms, i, f, n, bad = null;
+      var out = { frigos: [], produits: [], motifs: [], raisonsDefaut: [] }, noms, i, f, n, bad = null;
       var lire = function(x, k, nom){ var s = String(x[k] == null ? '' : x[k]).trim(); if (!s) return null; var v = num(s); if (v == null && !bad) bad = nom; return v; };
       for (i = 0; i < R.frigos.length; i++){ f = R.frigos[i]; n = String(f.nom || '').trim(); if (!n) continue;
         var o2 = { nom: n, famille: f.famille === 'legumes' ? 'legumes' : 'alliums', hygro: f.hygro !== false }; ['min', 'max', 'hrMin', 'hrMax'].forEach(function(k){ o2[k] = lire(f, k, n); });
@@ -1143,6 +1155,8 @@ label.adm-sec{display:inline-flex;align-items:center}
       if (new Set(noms).size !== noms.length){ A.err = 'Deux chambres portent le même nom.'; A.msg = ''; return draw(); }
       R.motifs.forEach(function(m){ m = String(m || '').trim(); if (m && out.motifs.map(function(x){ return x.toLowerCase(); }).indexOf(m.toLowerCase()) < 0) out.motifs.push(m); });
       if (!out.motifs.length){ A.err = 'Gardez au moins un motif « hors cible – normal ».'; A.msg = ''; return draw(); }
+      (R.raisonsDefaut || RAISONS_DEFAUT).forEach(function(m){ m = String(m || '').trim(); if (m && out.raisonsDefaut.map(function(x){ return x.toLowerCase(); }).indexOf(m.toLowerCase()) < 0) out.raisonsDefaut.push(m); });
+      if (!out.raisonsDefaut.length){ A.err = 'Gardez au moins une raison « relevé impossible ».'; A.msg = ''; return draw(); }
       noms = out.produits.map(function(x){ return x.nom.toLowerCase(); });
       if (new Set(noms).size !== noms.length){ A.err = 'Deux produits portent le même nom.'; A.msg = ''; return draw(); }
       btn.disabled = true;
@@ -1351,7 +1365,7 @@ label.adm-sec{display:inline-flex;align-items:center}
       }
       if (ri.avecConfig){
         var c = ri.config;
-        await CONFIG_REF.set({ frigos: c.frigos, produits: Array.isArray(c.produits) ? c.produits : [], motifs: Array.isArray(c.motifs) && c.motifs.length ? c.motifs : (relConfig && relConfig.motifs || []) });
+        await CONFIG_REF.set({ frigos: c.frigos, produits: Array.isArray(c.produits) ? c.produits : [], motifs: Array.isArray(c.motifs) && c.motifs.length ? c.motifs : (relConfig && relConfig.motifs || []), raisonsDefaut: Array.isArray(c.raisonsDefaut) && c.raisonsDefaut.length ? c.raisonsDefaut : raisonsDe(relConfig) });
       }
       relImport = null; A.err = '';
       A.msg = 'Import terminé : ' + fait + ' relevé' + (fait > 1 ? 's' : '') + ' restauré' + (fait > 1 ? 's' : '') + (ri.avecConfig ? ', réglages remplacés' : '') + '.';
@@ -1424,15 +1438,15 @@ label.adm-sec{display:inline-flex;align-items:center}
     if (isRelAdmin()){
       CONFIG_REF.onSnapshot(function(snap){
         if (!snap.exists){
-          relConfig = { frigos: clone(CHAMBRES_STOC), produits: [], motifs: MOTIFS_DEFAUT.slice() };
+          relConfig = { frigos: clone(CHAMBRES_STOC), produits: [], motifs: MOTIFS_DEFAUT.slice(), raisonsDefaut: RAISONS_DEFAUT.slice() };
           CONFIG_REF.set(relConfig).catch(function(e){ console.warn('Initialisation de temperatures/config impossible', e); });
         } else {
           var d = snap.data();
           relConfig = { frigos: avecFamille(Array.isArray(d.frigos) ? d.frigos : []), produits: Array.isArray(d.produits) ? d.produits : [],
-            motifs: Array.isArray(d.motifs) && d.motifs.length ? d.motifs : MOTIFS_DEFAUT.slice() };
+            motifs: Array.isArray(d.motifs) && d.motifs.length ? d.motifs : MOTIFS_DEFAUT.slice(), raisonsDefaut: raisonsDe(d) };
         }
         if (!relDirty){ relDraft = clone(relConfig); if (A.tab === 'rel' && !saisieEnCours()) draw(); }
-      }, function(e){ relConfig = { frigos: [], produits: [], motifs: MOTIFS_DEFAUT.slice() }; relDraft = clone(relConfig); A.err = 'Lecture des réglages des relevés impossible : ' + errTxt(e); if (A.tab === 'rel') draw(); });
+      }, function(e){ relConfig = { frigos: [], produits: [], motifs: MOTIFS_DEFAUT.slice(), raisonsDefaut: RAISONS_DEFAUT.slice() }; relDraft = clone(relConfig); A.err = 'Lecture des réglages des relevés impossible : ' + errTxt(e); if (A.tab === 'rel') draw(); });
       CONS_REF.onSnapshot(function(snap){
         var avant = JSON.stringify(cons);
         cons = Object.assign({}, CONS_DEFAUT, snap.exists ? snap.data() : {}); consLoaded = true;
@@ -1457,7 +1471,10 @@ label.adm-sec{display:inline-flex;align-items:center}
     var t = rubriques();
     if (!t.length){ bloquer('Accès réservé aux administrateurs', 'Votre compte n\'a pas de rôle Admin (plan de stockage, relevés ou mouvements). Demandez l\'accès à un admin.'); return; }
     ecouter();
-    ouvrirRubrique(t[0][0]);
+    // Lien direct depuis les relevés (admin.html#raisons) : rubrique Relevés, liste des raisons « relevé impossible »
+    var ancre = location.hash.slice(1), rel = t.some(function(x){ return x[0] === 'rel'; }) && (ancre === 'rel' || ancre === 'raisons');
+    ouvrirRubrique(rel ? 'rel' : t[0][0]);
+    if (rel && ancre === 'raisons'){ var essais = 0, viser = function(){ var e = document.getElementById('admRaisons'); if (e) e.scrollIntoView({ block: 'start' }); else if (++essais < 20) setTimeout(viser, 250); }; setTimeout(viser, 100); }
   });
 })();
 </script>

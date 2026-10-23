@@ -288,7 +288,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     .map(c=>({ nom:c[0], famille:familleParDefaut(c[0]), hygro:hygroParDefaut(c[0]), min:c[1], max:c[2], hrMin:null, hrMax:null }));
 
   let roleReleves = "none", rolePlan = "viewer";
-  let config = { frigos: [], produits: [], motifs: [] };
+  let config = { frigos: [], produits: [], motifs: [], raisonsDefaut: [] };
   let configLoaded = false;
   let currentMonthDocs = [], moisPrecedentDocs = [];
   let histDocs = null, histUnsub = null, histErr = false, curErr = false;
@@ -420,10 +420,12 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
   const MOTIFS_DEFAUT=["Dégivrage en cours","Chargement récent (produit en descente en température)","Porte ouverte (manutention)","Chambre en remise en route","Autre (préciser en remarque)"];
   // État « En défaut / dégivrage » : le relevé n'a pas pu être fait ; la raison est enregistrée dans motif (pas un écart).
   const ETATS=[["service","En service"],["vide","Vide"],["arret","À l'arrêt"],["defaut","En défaut / dégivrage"]];
+  // Liste par défaut ; l'admin la modifie dans Administration › Relevés de température (temperatures/config.raisonsDefaut)
   const RAISONS_DEFAUT=["Dégivrage en cours","Afficheur ou sonde en défaut","Groupe froid en panne","Chambre inaccessible (chargement, nettoyage)","Autre (préciser en remarque)"];
+  function raisons(){ return Array.isArray(config.raisonsDefaut)&&config.raisonsDefaut.length?config.raisonsDefaut:RAISONS_DEFAUT; }
   function sansMesure(e){ return e==="arret"||e==="defaut"; }
   function boutonsEtat(attr,actif){ return ETATS.map(([e,l])=>'<button type="button"'+(e==="defaut"?' class="def"':'')+' data-'+attr+'="'+e+'" aria-pressed="'+(actif===e)+'">'+l+'</button>').join(""); }
-  function raisonCourte(m){ const k=String(m||"").toLowerCase(); return k.indexOf("givr")>=0?"Dégivrage":k.indexOf("sonde")>=0||k.indexOf("affich")>=0?"Sonde":k.indexOf("panne")>=0?"Panne":k.indexOf("inacc")>=0?"Inaccessible":"Autre"; }
+  function raisonCourte(m){ const k=String(m||"").toLowerCase(); return k.indexOf("givr")>=0?"Dégivrage":k.indexOf("sonde")>=0||k.indexOf("affich")>=0?"Sonde":k.indexOf("panne")>=0?"Panne":k.indexOf("inacc")>=0?"Inaccessible":k.indexOf("autre")===0?"Autre":(String(m||"").trim().split(/[ (]/)[0]||"Autre"); }
   function statutDe(d){ if(d.etat==="arret") return "arret"; if(d.etat==="defaut") return "defaut"; if(d.statut==="conforme"||d.statut==="normal"||d.statut==="ecart") return d.statut; return d.conforme===false?"ecart":"conforme"; }
   function libelleStatut(st){ return ({conforme:"Conforme",normal:"Hors cible – normal",ecart:"Écart",arret:"Arrêt",defaut:"Relevé impossible"})[st]; }
   // Contrôle à cœur : relevé indicatif (température produit, pour ajuster la consigne de la chambre). Une mesure hors cible
@@ -495,7 +497,8 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       h+='<div class="card"><h2>État de la chambre</h2><div class="etat">'+
         boutonsEtat("etat",F.etat)+'</div></div>';
       h+='<div class="card hidden" id="f-df"><h2>Relevé impossible : pourquoi ?</h2><p class="hint">Le relevé de température n\'a pas pu être fait. Choisissez la raison ; elle sera enregistrée à la place de la température.</p><div class="motifs">'+
-        RAISONS_DEFAUT.map((m,i)=>'<button type="button" class="pick mot" data-fraison="'+i+'" aria-pressed="'+(F.raison===m)+'">'+esc(m)+'</button>').join("")+'</div></div>';
+        raisons().map((m,i)=>'<button type="button" class="pick mot" data-fraison="'+i+'" aria-pressed="'+(F.raison===m)+'">'+esc(m)+'</button>').join("")+'</div>'+
+        (estAdminRel()?'<p class="hint" style="margin:10px 0 0"><a href="admin.html#raisons">Modifier cette liste (Administration)</a></p>':'')+'</div>';
       h+='<div id="mesures-f"><div class="card"><h2>Température</h2>'+tempBlock("tf",fnum(fr.min),fnum(fr.max),F.temp)+'<div class="status" id="tf-st"></div></div>';
       h+='<div class="card'+(fr.hygro===false?' hidden':'')+'"><label class="f" for="hrf">Hygrométrie (facultatif)</label><p class="hint">'+(fin(hrMin)||fin(hrMax)?'Cible : '+rangeTxt(hrMin,hrMax,"%")+'.':'Humidité relative affichée par l\'hygromètre.')+'</p>'+
         '<div class="hr" id="hrf-box"><input id="hrf" type="text" inputmode="decimal" autocomplete="off" placeholder="–" value="'+esc(F.hr)+'" aria-label="Hygrométrie en pourcentage"><span>%</span></div><div class="status" id="hr-st"></div></div></div>';
@@ -528,7 +531,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     bindSteps();
     v.querySelectorAll("[data-etat]").forEach(b=>b.addEventListener("click",()=>{ F.etat=b.dataset.etat; v.querySelectorAll("[data-etat]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); update(); }));
     lierHorsCible("f",F,update);
-    v.querySelectorAll("[data-fraison]").forEach(b=>b.addEventListener("click",()=>{ F.raison=RAISONS_DEFAUT[+b.dataset.fraison]; v.querySelectorAll("[data-fraison]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); }));
+    v.querySelectorAll("[data-fraison]").forEach(b=>b.addEventListener("click",()=>{ F.raison=raisons()[+b.dataset.fraison]; v.querySelectorAll("[data-fraison]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); }));
     const pt=document.getElementById("cmplustard"); if(pt) pt.addEventListener("click",()=>{ allerSuivante(fr.nom); renderFrigo(); montrerListe(); });
     document.getElementById("fa").addEventListener("input",e=>F.action=e.target.value);
     document.getElementById("fc").addEventListener("input",e=>F.comment=e.target.value);
@@ -841,10 +844,10 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     const chD=config.frigos.find(f=>f.nom===d.lieu), avecHygro=!chD||chD.hygro!==false||d.hr!=null;
     if(d.motif&&motifs.indexOf(d.motif)<0) motifs.push(d.motif);
     const E={ etat:d.etat||"service", choix:st==="ecart"?"ecart":st==="normal"?d.motif:"", raison:st==="defaut"?d.motif:"" };
-    const raisons=RAISONS_DEFAUT.slice(); if(E.raison&&raisons.indexOf(E.raison)<0) raisons.push(E.raison);
+    const listeR=raisons().slice(); if(E.raison&&listeR.indexOf(E.raison)<0) listeR.push(E.raison);
     el.innerHTML='<div class="edit"><h2>Modifier le relevé</h2><p class="hint">'+fmtDate(d.at)+' – '+(frigo?"Frigo":"À cœur")+' – '+esc(d.lieu)+(d.produit?' – '+esc(d.produit):'')+' – opérateur : '+esc(d.operateur)+'. Cible : '+rangeTxt(fnum(d.min),fnum(d.max))+'.</p>'+
       (frigo?'<label class="f">État</label><div class="etat" style="margin-bottom:12px">'+boutonsEtat("eetat",E.etat)+'</div>'+
-        '<div id="e-df" class="hidden" style="margin-bottom:10px"><label class="f" for="edf">Relevé impossible : raison</label><select id="edf"><option value="">— Choisir —</option>'+raisons.map((m,i)=>'<option value="'+i+'"'+(E.raison===m?" selected":"")+'>'+esc(m)+'</option>').join("")+'</select></div>':'')+
+        '<div id="e-df" class="hidden" style="margin-bottom:10px"><label class="f" for="edf">Relevé impossible : raison</label><select id="edf"><option value="">— Choisir —</option>'+listeR.map((m,i)=>'<option value="'+i+'"'+(E.raison===m?" selected":"")+'>'+esc(m)+'</option>').join("")+'</select></div>':'')+
       '<div id="e-mes"><label class="f" for="et">'+(frigo?'Température (°C)':'Températures à cœur (°C), séparées par « / »')+'</label><input id="et" type="text" inputmode="decimal" value="'+esc((d.temps&&d.temps.length?d.temps:(d.temp!=null?[d.temp]:[])).map(fmtT).join(" / "))+'">'+
       (frigo?'<label class="f'+(avecHygro?'':' hidden')+'" for="eh" style="margin-top:10px">Hygrométrie (%), facultatif</label><input id="eh" class="'+(avecHygro?'':'hidden')+'" type="text" inputmode="decimal" value="'+esc(d.hr!=null?String(d.hr).replace(".",","):"")+'">':'')+'</div>'+
       (!frigo?'<label class="f" for="el" style="margin-top:10px">N° de lot ou commande</label><input id="el" type="text" value="'+esc(d.lot||"")+'">':'')+
@@ -866,7 +869,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     // Contrôle à cœur : pas de motif ni d'action corrective (relevé indicatif)
     const maj=()=>{ const L=lire(); g("e-mes").classList.toggle("hidden",L.arret); if(frigo) g("e-df").classList.toggle("hidden",E.etat!=="defaut"); g("e-hc").classList.toggle("hidden",!frigo||!L.horsCible); g("e-act").classList.toggle("hidden",!(frigo&&L.horsCible&&E.choix==="ecart")); };
     el.querySelectorAll("[data-eetat]").forEach(b=>b.addEventListener("click",()=>{ E.etat=b.dataset.eetat; el.querySelectorAll("[data-eetat]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); maj(); }));
-    g("et").addEventListener("input",maj); if(frigo){ g("eh").addEventListener("input",maj); g("edf").addEventListener("change",e=>{ E.raison=e.target.value===""?"":raisons[+e.target.value]; }); }
+    g("et").addEventListener("input",maj); if(frigo){ g("eh").addEventListener("input",maj); g("edf").addEventListener("change",e=>{ E.raison=e.target.value===""?"":listeR[+e.target.value]; }); }
     g("ech").addEventListener("change",e=>{ const v=e.target.value; E.choix=v==="ecart"?"ecart":v?motifs[+v.slice(1)]:""; maj(); });
     g("ecancel").addEventListener("click",()=>{ H.edit=null; drawHist(); });
     g("esave").addEventListener("click",async()=>{
@@ -941,7 +944,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       '<label class="f" for="ah">Heure du relevé</label><input id="ah" type="time" required style="max-width:200px">'+
       '<label class="f" for="ao" style="margin-top:10px">Opérateur (personne qui a fait le relevé)</label><input id="ao" type="text" autocomplete="off" placeholder="Nom">'+
       '<label class="f" style="margin-top:10px">État</label><div class="etat" style="margin-bottom:12px">'+boutonsEtat("aetat",E.etat)+'</div>'+
-      '<div id="a-df" class="hidden" style="margin-bottom:10px"><label class="f" for="adf">Relevé impossible : raison</label><select id="adf"><option value="">— Choisir —</option>'+RAISONS_DEFAUT.map((m,i)=>'<option value="'+i+'">'+esc(m)+'</option>').join("")+'</select></div>'+
+      '<div id="a-df" class="hidden" style="margin-bottom:10px"><label class="f" for="adf">Relevé impossible : raison</label><select id="adf"><option value="">— Choisir —</option>'+raisons().map((m,i)=>'<option value="'+i+'">'+esc(m)+'</option>').join("")+'</select></div>'+
       '<div id="a-mes"><label class="f" for="at">Température (°C)</label><input id="at" type="text" inputmode="decimal" autocomplete="off">'+
       (avecHygro?'<label class="f" for="ahr" style="margin-top:10px">Hygrométrie (%), facultatif</label><input id="ahr" type="text" inputmode="decimal" autocomplete="off">':'')+'</div>'+
       '<p class="status" id="a-st"></p>'+
@@ -961,7 +964,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       g("a-hc").classList.toggle("hidden",!L.horsCible); g("a-act").classList.toggle("hidden",!(L.horsCible&&E.choix==="ecart")); };
     el.querySelectorAll("[data-aetat]").forEach(b=>b.addEventListener("click",()=>{ E.etat=b.dataset.aetat; el.querySelectorAll("[data-aetat]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); maj(); }));
     g("at").addEventListener("input",maj); if(avecHygro) g("ahr").addEventListener("input",maj);
-    g("adf").addEventListener("change",e=>{ E.raison=e.target.value===""?"":RAISONS_DEFAUT[+e.target.value]; });
+    g("adf").addEventListener("change",e=>{ const lr=raisons(); E.raison=e.target.value===""?"":lr[+e.target.value]; });
     g("ach").addEventListener("change",e=>{ const v=e.target.value; E.choix=v==="ecart"?"ecart":v?motifs[+v.slice(1)]:""; maj(); });
     g("acancel").addEventListener("click",()=>{ H.ajout=null; drawHist(); });
     g("asave").addEventListener("click",async()=>{
@@ -1021,7 +1024,7 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
     const u=auth.currentUser;
     const out={ format:"releves-temperature", version:1, exporteLe:new Date().toISOString(), exportePar:u?u.email:"",
       perimetre:{ mois:H.mois, type:H.type, ecartsSeuls:!!H.ko, chambres:H.chambres||"toutes" },
-      config:{ frigos:config.frigos, produits:config.produits, motifs:config.motifs },
+      config:{ frigos:config.frigos, produits:config.produits, motifs:config.motifs, raisonsDefaut:raisons() },
       nb:docs.length, releves:docs.map(d=>{ const x=enClair(d); delete x._id; return Object.assign({ id:d._id }, x); }) };
     telecharger("releves-temperature-"+H.mois+".json", JSON.stringify(out,null,2), "application/json");
   }
@@ -1050,14 +1053,15 @@ nav.rtabs.lecture button[data-tab="frigo"],nav.rtabs.lecture button[data-tab="pr
       const d=s.exists?s.data():null;
       if(!d){
         // Première utilisation : chambres de la fiche STOC E12.1. Un admin enregistre cette liste de départ.
-        config={ frigos:normaliserFrigos(CHAMBRES_STOC), produits:[], motifs:MOTIFS_DEFAUT.slice() };
-        if(peutConfigurer) CONFIG_REF.set({ frigos:CHAMBRES_STOC, produits:[], motifs:MOTIFS_DEFAUT }).catch(e=>console.warn("Initialisation des réglages impossible",e));
+        config={ frigos:normaliserFrigos(CHAMBRES_STOC), produits:[], motifs:MOTIFS_DEFAUT.slice(), raisonsDefaut:RAISONS_DEFAUT.slice() };
+        if(peutConfigurer) CONFIG_REF.set({ frigos:CHAMBRES_STOC, produits:[], motifs:MOTIFS_DEFAUT, raisonsDefaut:RAISONS_DEFAUT }).catch(e=>console.warn("Initialisation des réglages impossible",e));
       } else {
         config={ frigos:normaliserFrigos(Array.isArray(d.frigos)?d.frigos:[]), produits:Array.isArray(d.produits)?d.produits:[],
-          motifs:Array.isArray(d.motifs)&&d.motifs.length?d.motifs:MOTIFS_DEFAUT.slice() };
+          motifs:Array.isArray(d.motifs)&&d.motifs.length?d.motifs:MOTIFS_DEFAUT.slice(),
+          raisonsDefaut:Array.isArray(d.raisonsDefaut)&&d.raisonsDefaut.length?d.raisonsDefaut:RAISONS_DEFAUT.slice() };
       }
       configLoaded=true; render();
-    },e=>{ console.warn(e); config={ frigos:normaliserFrigos(CHAMBRES_STOC), produits:[], motifs:MOTIFS_DEFAUT.slice() }; configLoaded=true; banner("Réglages des relevés illisibles : liste des chambres par défaut affichée. "+lectureMsg(e)); render(); });
+    },e=>{ console.warn(e); config={ frigos:normaliserFrigos(CHAMBRES_STOC), produits:[], motifs:MOTIFS_DEFAUT.slice(), raisonsDefaut:RAISONS_DEFAUT.slice() }; configLoaded=true; banner("Réglages des relevés illisibles : liste des chambres par défaut affichée. "+lectureMsg(e)); render(); });
     // Mois précédent (lecture unique) : dernière température connue des chambres en début de mois
     { const n=new Date(); moisQuery(monthKey(new Date(n.getFullYear(),n.getMonth()-1,1))).get()
         .then(s=>{ moisPrecedentDocs=s.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(d=>d.type==="frigo"); if(tab==="frigo"&&!F.lieu) renderFrigo(); })
